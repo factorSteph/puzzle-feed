@@ -1,0 +1,25 @@
+# Plantilla de `descartados.local.yml`.
+#
+# Copiala a `config/descartados.local.yml` y llenala con tus propios remitentes.
+# El archivo real está en .gitignore: nunca se commitea.
+#
+# Es OPCIONAL. Sin él, el pipeline funciona igual — la lista de admitidos de fuentes.yml
+# ya deja todo lo demás fuera. Esto solo sirve para que el reporte agrupe los
+# descartes por motivo en vez de amontonarlos en "desconocidos".
+#
+# Los nombres de las categorías son libres: son solo etiquetas para el reporte.
+# Nunca pongas correos de personas, ni siquiera acá.
+
+descartados_conocidos:
+
+  marketing:
+    - promos@ejemplo.com
+
+  bancos_y_finanzas:
+    - notificaciones@tubanco.example
+
+  postulaciones_de_empleo:
+    - no-reply@ats.example
+
+  transaccionales:
+    - no-reply@accounts.google.com

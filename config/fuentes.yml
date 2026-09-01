@@ -1,0 +1,112 @@
+# Puzzle Feed — fuentes del feed
+#
+# ESTE ARCHIVO ES PÚBLICO. Se commitea y cualquiera puede leerlo.
+# Por eso solo contiene SUSCRIPCIONES PÚBLICAS: newsletters a las que cualquiera
+# se puede suscribir. Nada personal, nada institucional, ningún correo de persona.
+#
+# La lista de remitentes descartados (bancos, postulaciones, trámites) vive en
+# `descartados.local.yml`, que está en .gitignore y nunca sale de tu máquina.
+#
+# Este archivo es la LISTA DE ADMITIDOS: solo entra al feed lo que esté acá listado.
+# El filtro es por REMITENTE EXACTO, nunca por dominio — therundown.ai manda desde
+# cuatro direcciones y solo dos son noticias.
+#
+# ── El campo `tipo` ──────────────────────────────────────────────────────────
+#
+#   agregador  (default)  El correo ENLAZA a artículos de terceros. El pipeline
+#                         elige los links que valen, baja cada artículo y lo
+#                         resume desde la fuente original (spec.md D7).
+#
+#   autor                 El correo ES el artículo. No hay a dónde ir: el texto
+#                         completo viene adentro. Se resume el cuerpo del correo
+#                         directo, sin elegir links ni descargar nada.
+#
+#   compendio             El correo trae VARIAS noticias completas adentro y
+#                         tampoco enlaza a ningún lado. Se saca cada noticia del
+#                         cuerpo, como items separados.
+#
+# La distinción salió de mirar datos: un correo de Nerd Processor trae 5.500
+# caracteres de ensayo y nueve links, TODOS de tracking hacia posts anteriores,
+# la suscripción o el sitio. Ninguno apunta al texto que estás leyendo. Tratarlo
+# como agregador hacía que el feed trajera sus posts VIEJOS y se perdiera el del
+# día — que es justamente el que vale.
+#
+# Para las fuentes `autor` hace falta `sitio`: el correo no trae permalink, así
+# que es la única URL honesta que el dashboard puede ofrecer.
+
+fuentes:
+
+  # ── AI & Tech ────────────────────────────────────────────────────────────
+  - remitente: news@daily.therundown.ai
+    nombre: The Rundown AI
+    categoria: AI & Tech
+    frecuencia: diaria
+
+  - remitente: crew@technews.therundown.ai
+    nombre: The Rundown Tech
+    categoria: AI & Tech
+    frecuencia: diaria
+
+  - remitente: superhumancode@news.codenewsletter.ai
+    nombre: The Code
+    categoria: AI & Tech
+    frecuencia: diaria
+
+  - remitente: dan@tldrnewsletter.com
+    nombre: TLDR
+    categoria: AI & Tech
+    frecuencia: irregular
+    # Se anunciaba como diaria, pero medido sobre 14 días llegaron 8 ediciones.
+
+  - remitente: kieran@nerdprocessor.com
+    nombre: Nerd Processor
+    categoria: AI & Tech
+    frecuencia: semanal
+    tipo: autor
+    sitio: https://www.nerdprocessor.com
+    # Kieran Snyder escribe ensayos con datos y viñetas propias. El texto viene
+    # completo en el correo: no hay artículo que ir a buscar.
+
+  # ── Noticias ─────────────────────────────────────────────────────────────
+  - remitente: info@nopasanada.com
+    nombre: No Pasa Nada
+    categoria: Noticias
+    frecuencia: irregular
+    idioma: es
+    tipo: compendio
+    sitio: https://nopasanada.com
+    # Noticias de Costa Rica y del mundo, fuera del eje tech. Va en su propia
+    # sección del dashboard por la categoría, no mezclada con AI & Tech.
+    # Medido: 6 ediciones en 14 días, no diaria como decía el spec v2.
+    # Trae 8.000 caracteres de noticias en el cuerpo y solo links de tracking:
+    # tratada como agregador desaparecía del feed entero.
+
+  # ── Mujeres y emprendimiento ─────────────────────────────────────────────
+  - remitente: hello@newsletter.thefq.com
+    nombre: The Female Quotient
+    categoria: Mujeres y emprendimiento
+    frecuencia: semanal
+    # Llega los lunes. Cae en Primary, no en Promotions.
+
+
+# Sección aparte del dashboard: "Free Courses Coming Up Next".
+# No llevan resumen profundo — solo título, fecha, link y si es gratis.
+cursos_eventos:
+
+  - remitente: hi@learn.therundown.ai
+    nombre: The Rundown Learn
+
+  - remitente: updates@contact.therundown.ai
+    nombre: The Rundown (updates)
+
+  - remitente: support@alliekmiller.com
+    nombre: Allie K Miller
+
+  - remitente: hello@justinwelsh.me
+    nombre: Justin Welsh
+
+  - remitente: thefq@info.thefq.com
+    nombre: The Female Quotient (eventos)
+
+  - remitente: academy@openai.com
+    nombre: OpenAI Academy

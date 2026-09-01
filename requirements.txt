@@ -1,0 +1,9 @@
+# Bloque 2 — ingesta y filtro
+python-dotenv>=1.0    # lee .env sin exponer secretos en el código
+PyYAML>=6.0           # lee config/fuentes.yml (elegido sobre JSON porque admite comentarios)
+
+# Bloque 3 — artículos y LLM
+requests>=2.31        # bajar artículos y llamar a la API de Gemini por REST
+trafilatura>=1.8      # extraer el texto real de un HTML, sin menús ni banners
+
+# imaplib, email y ssl son librería estándar de Python: no se instalan.

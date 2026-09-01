@@ -1,0 +1,35 @@
+# ── Credenciales — NUNCA commitear ───────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+credentials.json
+token.json
+
+# Configuración local: mapea tu vida privada (bancos, trámites, postulaciones).
+# Ver config/descartados.local.yml.example para la plantilla pública.
+config/*.local.yml
+
+# Ganchos locales del pipeline. `main.py` los carga si existen y sigue sin
+# ellos si no. Lo que cada quien haga con su propio feed no tiene por qué
+# vivir en un repositorio público.
+pipeline/local.py
+pipeline/*.local.py
+
+# ── Salidas locales ──────────────────────────────────────────────────────────
+# Cualquier volcado de depuración que no deba publicarse (ver spec.md §7).
+salidas_privadas/
+*.privado.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# ── Sistema ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
