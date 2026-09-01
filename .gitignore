@@ -1,4 +1,4 @@
-# ── Credenciales — NUNCA commitear ───────────────────────────────────────────
+# ── Credenciales. NUNCA commitear ───────────────────────────────────────────
 .env
 .env.*
 !.env.example
@@ -33,3 +33,8 @@ env/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Notas de trabajo con el agente. Contexto para Claude Code, no documentacion
+# del proyecto: describe como trabaja quien lo escribe, y eso no es asunto de
+# un repositorio publico.
+CLAUDE.md

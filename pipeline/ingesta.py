@@ -84,7 +84,7 @@ def traer_encabezados(imap, uids, lote=100):
     """Trae remitente, asunto y fecha. No baja los cuerpos: acá solo clasificamos."""
     correos = []
     for inicio in range(0, len(uids), lote):
-        grupo = b",".join(uids[inicio : inicio + lote]).decode()
+        grupo = b",".join(uids[inicio: inicio + lote]).decode()
 
         tipo, datos = imap.uid("FETCH", grupo, CAMPOS)
         if tipo != "OK":
@@ -119,7 +119,7 @@ def _texto(valor):
         return str(make_header(decode_header(valor)))
     except (UnicodeDecodeError, LookupError, ValueError):
         # Un asunto malformado no debe matar la corrida. Devolvemos el crudo,
-        # que se va a ver raro en el reporte — visible, no silencioso.
+        # que se va a ver raro en el reporte: visible, no silencioso.
         return valor
 
 

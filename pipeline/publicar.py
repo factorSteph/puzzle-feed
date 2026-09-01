@@ -2,14 +2,14 @@
 
 Este módulo tiene un solo trabajo delicado: **decidir qué es público**. Todo lo
 que escriba acá termina en un repositorio público y servido por GitHub Pages, y
-GitHub Pages no tiene servidor que decida quién ve qué — cualquiera puede abrir
+GitHub Pages no tiene servidor que decida quién ve qué: cualquiera puede abrir
 el `.json` directo (spec.md §7).
 
 ## La lista de campos permitidos
 
 Los campos que se publican están enumerados uno por uno en `CAMPOS_PUBLICOS`, y
-todo lo que no esté ahí se descarta. Es al revés de lo intuitivo —sería más
-corto enumerar lo que se excluye— y es a propósito: enumerando exclusiones, un
+todo lo que no esté ahí se descarta. Es al revés de lo intuitivo (sería más
+corto enumerar lo que se excluye) y es a propósito: enumerando exclusiones, un
 campo nuevo del pipeline se publicaría solo por olvidar agregarlo a la lista;
 enumerando lo permitido, no sale hasta que alguien lo decida.
 
@@ -17,7 +17,7 @@ enumerando lo permitido, no sale hasta que alguien lo decida.
 
 La enumeración de campos permitidos ya hace casi todo el trabajo. La
 verificación existe por si algún día alguien agrega una sección nueva al feed
-—una que no pase por `_solo`— y se olvida de filtrarla.
+(una que no pase por `_solo`) y se olvida de filtrarla.
 """
 
 import json
@@ -50,8 +50,8 @@ CAMPOS_HILO = ("titulo", "tipo", "que_dice_el_conjunto", "ids")
 # comparan contra las CLAVES del árbol, nunca contra el texto: la primera
 # versión de esto miraba el JSON entero como una cadena y abortó una corrida
 # real porque una noticia sobre Instagram hablaba de "perfiles" de redes
-# sociales. El contenido de un resumen puede decir cualquier palabra —es texto
-# sobre el mundo—; lo que no puede aparecer es un campo que lleve datos
+# sociales. El contenido de un resumen puede decir cualquier palabra (es texto
+# sobre el mundo); lo que no puede aparecer es un campo que lleve datos
 # privados.
 #
 # Un gancho local puede sumar los suyos por su cuenta; acá van los genéricos.
@@ -117,7 +117,7 @@ def _verificar(feed):
     profundidad.
 
     Revisa las claves y no el texto. Un resumen puede legítimamente hablar de
-    "perfiles de Instagram" o de "datos privados de los usuarios" — es prosa
+    "perfiles de Instagram" o de "datos privados de los usuarios": es prosa
     sobre el mundo. Lo que no puede existir es un campo que TRAIGA datos
     privados, y eso sí se detecta por su nombre.
 

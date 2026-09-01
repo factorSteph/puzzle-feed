@@ -18,7 +18,7 @@ corrida absurda. Entonces:
 
 spec.md §6 los lista al revés (dedup en 6, resumen en 7). Se invirtió a
 propósito y con acuerdo: como el resumen ya viaja agrupado por correo, resumir
-un item que después resulta duplicado no cuesta ni una llamada extra — va en el
+un item que después resulta duplicado no cuesta ni una llamada extra: va en el
 mismo lote. Y deduplicar comparando resúmenes reales es mucho más preciso que
 comparando textos de ancla, que en TLDR son cosas como "OpenAI's new model".
 
@@ -128,7 +128,7 @@ Qué hace importante a una pieza, en este orden:
      herramientas, qué falla, qué no se dice. Aunque no reporte ningún hecho
      nuevo. Estas piezas son tan importantes como los lanzamientos, a veces
      más: son las que dejan pensando.
-  3. Es un hecho consumado y verificable —se lanzó, se aprobó, se midió— y no
+  3. Es un hecho consumado y verificable (se lanzó, se aprobó, se midió) y no
      el anuncio de que algo va a pasar algún día.
   4. Trae números, no adjetivos.
 
@@ -200,7 +200,7 @@ def elegir_links(cliente, fuente, asunto, candidatos, maximo=NOTICIAS_POR_CORREO
     """Elige las `maximo` noticias más importantes del correo.
 
     Le pedimos al modelo que JERARQUICE, no que clasifique. Antes marcaba todo
-    lo que era noticia —10 a 18 por edición— y el orquestador cortaba las
+    lo que era noticia (10 a 18 por edición) y el orquestador cortaba las
     primeras N por orden de aparición en el correo, que es un criterio bobo: la
     posición de un link no dice nada sobre su importancia.
 
@@ -283,7 +283,7 @@ Escribís en español, aunque el artículo esté en inglés.
 Por cada artículo devolvés cuatro cosas:
 
 ──────────────────────────────────────────────────────────────────────────
-resumen — tres o cuatro frases. Qué pasó, con todo lo necesario para
+resumen: tres o cuatro frases. Qué pasó, con todo lo necesario para
           entenderlo sin contexto previo.
 
   IDENTIFICÁ A CADA ACTOR la primera vez que lo nombrás. No "Tencent
@@ -305,7 +305,7 @@ resumen — tres o cuatro frases. Qué pasó, con todo lo necesario para
   No copies frases del original: reformulá.
 
 ──────────────────────────────────────────────────────────────────────────
-por_que_importa — UNA frase. Qué cambia en el mundo real porque esto pasó.
+por_que_importa. UNA frase. Qué cambia en el mundo real porque esto pasó.
 
   No repitas el resumen con otras palabras. Respondé "¿y entonces qué?".
   Si la respuesta honesta es "casi nada", escribí eso: "es un lanzamiento
@@ -313,7 +313,7 @@ por_que_importa — UNA frase. Qué cambia en el mundo real porque esto pasó.
   Preferimos que lo digas a que infles algo vacío.
 
 ──────────────────────────────────────────────────────────────────────────
-dato_concreto — el hecho específico que hace útil la noticia, o null.
+dato_concreto: el hecho específico que hace útil la noticia, o null.
 
   Es lo que alguien anotaría. El número, el nombre exacto, el cambio puntual.
 
@@ -326,7 +326,7 @@ dato_concreto — el hecho específico que hace útil la noticia, o null.
   dato inventado acá es peor que un null.
 
 ──────────────────────────────────────────────────────────────────────────
-como_aplicarlo — UNA o dos frases, o null.
+como_aplicarlo. UNA o dos frases, o null.
 
   El primer paso concreto para alguien que quiera usar esto, hoy. Dónde se
   empieza, qué hace falta tener, qué se instala o se lee.
@@ -335,13 +335,13 @@ como_aplicarlo — UNA o dos frases, o null.
   y para cualquiera: "para probarlo hace falta X, se instala con Y". NUNCA
   sobre la lectora: nada de "vos podrías usar esto en tu proyecto".
 
-  null cuando la noticia no es aplicable — una regulación que entra en
+  null cuando la noticia no es aplicable: una regulación que entra en
   vigencia en dos años, un anuncio de algo que todavía no salió. No fuerces
   un paso donde no hay ninguno.
 ──────────────────────────────────────────────────────────────────────────
 
 ──────────────────────────────────────────────────────────────────────────
-tema — exactamente uno de estos ocho. Elegí por lo que la noticia HACE, no
+tema: exactamente uno de estos ocho. Elegí por lo que la noticia HACE, no
        por quién la protagoniza:
 
   regulacion    leyes, fallos judiciales, obligaciones de cumplimiento,
@@ -497,7 +497,7 @@ Resumís el ensayo de un boletín de autor.
 
 Esto NO es una noticia y no se resume como tal. Nadie reporta un hecho: alguien
 pensó algo y se tomó el trabajo de escribirlo. Preguntarle a este texto "qué
-pasó" no tiene sentido — la pregunta es QUÉ SOSTIENE y con qué lo sostiene.
+pasó" no tiene sentido: la pregunta es QUÉ SOSTIENE y con qué lo sostiene.
 
 Devolvés:
 
@@ -520,8 +520,8 @@ Devolvés:
              no se está discutiendo en otro lado. No repitas la tesis.
 
   dato_concreto
-             Si el ensayo trae un dato duro —cuánta gente midió, qué
-             porcentaje, qué encontró— ponelo. Si es puro razonamiento, null.
+             Si el ensayo trae un dato duro (cuánta gente midió, qué
+             porcentaje, qué encontró) ponelo. Si es puro razonamiento, null.
 
   como_aplicarlo
              Casi siempre null: un ensayo se piensa, no se ejecuta. Ponelo
@@ -536,7 +536,7 @@ Devolvés:
 
 Prohibido convertir el ensayo en consejos. Si la autora cuenta que planta
 tomates aunque le llegue una caja de verduras, el resumen dice de qué se trata
-esa reflexión — no la traduce a "5 lecciones sobre el esfuerzo".
+esa reflexión: no la traduce a "5 lecciones sobre el esfuerzo".
 
 Este resumen se publica en un sitio público: escribilo sobre el ensayo, nunca
 sobre quien lo va a leer.
@@ -606,7 +606,7 @@ Escribís para alguien que no viene siguiendo el tema, en español, y valen las
 mismas reglas de siempre:
 
   · identificá a cada persona, institución o empresa la primera vez que la
-    nombrás — no "el TSE dijo", sino "el Tribunal Supremo de Elecciones, el
+    nombrás: no "el TSE dijo", sino "el Tribunal Supremo de Elecciones, el
     órgano que organiza las elecciones en Costa Rica, dijo"
   · dejá clarísimo quién le hizo qué a quién
   · nada de adjetivos que el texto no sostenga con un hecho
@@ -664,7 +664,7 @@ def resumir_compendio(cliente, fuente, asunto, texto, maximo=NOTICIAS_POR_CORREO
 
     El tercer tipo de fuente, y el que faltaba. `agregador` enlaza a terceros,
     `autor` trae un ensayo, `compendio` trae varias noticias adentro y no
-    enlaza a ningún lado — medido sobre No Pasa Nada: 8.113 caracteres de
+    enlaza a ningún lado: medido sobre No Pasa Nada: 8.113 caracteres de
     contenido y ocho links, todos de tracking sin texto de ancla útil.
 
     Tratarlo como agregador lo borraba del feed entero: el paso de elegir
@@ -724,7 +724,7 @@ Por cada grupo elegí un item principal, con este orden de preferencia:
   2. si empatan, el resumen que dé más detalle concreto
 
 Escribí primero por qué son el mismo hecho, y después listá los ids. Si no
-encontrás ninguna duplicación, devolvé una lista vacía — es un resultado
+encontrás ninguna duplicación, devolvé una lista vacía: es un resultado
 perfectamente normal, no lo fuerces.
 """
 
@@ -945,7 +945,7 @@ def extraer_cursos(cliente, fuente, asunto, texto, candidatos):
 
     if candidatos:
         lineas += ["", "Links del correo:"]
-        lineas += [f'  {c["url"]}  —  "{c.get("contexto", "")}"' for c in candidatos[:30]]
+        lineas += [f'  {c["url"]}:  "{c.get("contexto", "")}"' for c in candidatos[:30]]
 
     datos, incidencia = cliente.llamar(
         INSTRUCCION_CURSOS,

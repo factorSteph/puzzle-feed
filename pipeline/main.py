@@ -1,11 +1,11 @@
-"""Puzzle Feed — corrida del pipeline.
+"""Puzzle Feed: corrida del pipeline.
 
 Ingesta IMAP y filtro por lista de admitidos, extracción de links y descarga de
 artículos, y los pasos de criterio: elegir, resumir, deduplicar e hilar.
 
 **Sin banderas de salida no escribe nada**: ni archivos, ni correo, ni Gmail.
 Procesa, reporta en la terminal, y se va. Que escribir sea opt-in es
-deliberado — abajo se explica por cada salida.
+deliberado: abajo se explica por cada salida.
 
 Uso:
     python pipeline/main.py                      # últimos 3 días
@@ -141,7 +141,7 @@ def procedencia_del_correo(entrada_fuente):
 def armar_item(item_id, resumido, correo, entrada_fuente, procedencia):
     """Arma un item del feed a partir de lo que devolvió el modelo.
 
-    Existe porque las tres rutas —agregador, autor y compendio— construían el
+    Existe porque las tres rutas (agregador, autor y compendio) construían el
     mismo diccionario por separado, y agregar un campo obligaba a acordarse de
     los tres lugares. Pasó: al sumar `tema` había que tocar tres bloques
     idénticos, que es exactamente el momento en que conviene juntarlos.
@@ -173,7 +173,7 @@ def procesar_correo_de_fuente(
     """Saca los items de un correo: elegir links → bajar → resumir.
 
     Devuelve la lista de items. Si algo falla, devuelve lo que haya conseguido y
-    deja el motivo en `incidencias` — nunca revienta la corrida.
+    deja el motivo en `incidencias`: nunca revienta la corrida.
     """
     nombre = entrada_fuente["nombre"]
     etiqueta = f"{nombre} · {_fecha_corta(correo)}"
@@ -241,7 +241,7 @@ def procesar_correo_de_fuente(
             # resumió del blurb no puede competir de igual a igual con lo que
             # se leyó completo: el newsletter ya lo editorializó y muchas veces
             # no trae el dato que hace útil la noticia. Va abajo, compacto,
-            # pero va — desaparecerlo sería descartar en silencio.
+            # pero va: desaparecerlo sería descartar en silencio.
             "nivel": "principal" if descarga["ok"] else "secundario",
         }
 
@@ -308,8 +308,8 @@ def procesar_correo_compendio(cliente, correo, mensaje, entrada_fuente, incidenc
 def quitar_cursos_repetidos(cursos):
     """Un mismo evento anunciado en varios correos es un solo evento.
 
-    Los cursos no pasan por la deduplicación semántica del LLM —esa mira
-    noticias— así que sin esto el mismo taller aparece dos o tres veces:
+    Los cursos no pasan por la deduplicación semántica del LLM (esa mira
+    noticias) así que sin esto el mismo taller aparece dos o tres veces:
     The Rundown Learn manda varios recordatorios del mismo evento y cada
     correo lo aporta de nuevo.
 
@@ -479,7 +479,7 @@ def reportar_ingesta(grupos, fuentes, cursos, descartados, detalle=False):
         print("\n  (corré con --detalle para ver remitente por remitente)")
         return
 
-    titulo("DESCARTADOS — cada uno con su motivo")
+    titulo("DESCARTADOS: cada uno con su motivo")
     if not grupos["descartado"]:
         print("  (ninguno)")
     por_motivo = defaultdict(list)
@@ -491,7 +491,7 @@ def reportar_ingesta(grupos, fuentes, cursos, descartados, detalle=False):
         for remitente, n in sorted(por_motivo[motivo], key=lambda x: -x[1]):
             print(f"      {n:>3}x  {remitente}")
 
-    titulo("DESCONOCIDOS — no están en ninguna lista")
+    titulo("DESCONOCIDOS: no están en ninguna lista")
     if not grupos["desconocido"]:
         print("  (ninguno)")
     else:
@@ -543,7 +543,7 @@ def reportar_feed(items, cursos, hilos, incidencias):
     if secundarios:
         titulo("TAMBIÉN SALIÓ ESTO  (no se pudo leer el artículo original)")
         print("  Resumido del correo, que ya viene editorializado. Va aparte para")
-        print("  no competir con lo que sí se leyó completo — pero va, no se borra.\n")
+        print("  no competir con lo que sí se leyó completo, pero va: no se borra.\n")
         for item in secundarios:
             print(f'  · {item["titulo"]}')
             print(f'      {item["fuente"]} · {item["motivo_fallback"]}')
@@ -746,7 +746,7 @@ def main():
 
 
 def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cliente):
-    """Escribe el feed, corre el gancho local y marca en Gmail — lo pedido.
+    """Escribe el feed, corre el gancho local y marca en Gmail: lo pedido.
 
     Va en este orden a propósito, de menos a más irreversible: primero el
     archivo, que se puede borrar; después lo que el gancho local haga, que
@@ -763,7 +763,7 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
             )
             print(f"  {cuantos} item(s) en {destino}")
         except publicar.FugaDePrivacidad as error:
-            print(f"\n  ABORTADO — {error}\n", file=sys.stderr)
+            print(f"\n  ABORTADO: {error}\n", file=sys.stderr)
             return 1
 
     if args.local:
@@ -784,7 +784,7 @@ def correr_gancho_local(args, usuario, password, items, hilos, fecha_feed, clien
     haga con su propio feed no tiene por qué vivir en un repositorio público.
 
     Lo que imprima sale solo en la terminal de quien corre el pipeline. Nada de
-    esto toca `feed.json` — el feed público ya se escribió antes, con su propia
+    esto toca `feed.json`: el feed público ya se escribió antes, con su propia
     enumeración de campos permitidos.
     """
     ruta = pathlib.Path(__file__).with_name("local.py")
@@ -828,7 +828,7 @@ def marcar_en_gmail(args, usuario, password, correos, items, cursos):
     plan = etiquetas.planificar(items, cursos_por_uid, procesados)
     por_uid = {c["uid"]: c for c in correos}
 
-    titulo("GMAIL" + ("  (simulación — no se toca nada)" if args.simular else ""))
+    titulo("GMAIL" + ("  (simulación: no se toca nada)" if args.simular else ""))
     for linea in etiquetas.describir(plan, por_uid):
         print(linea)
 

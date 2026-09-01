@@ -5,7 +5,7 @@ patrocinios, redes sociales, "ver en el navegador" y darse de baja.
 
 Este módulo hace la parte MECÁNICA: sacar los links y descartar la basura evidente
 por su forma. Elegir cuáles de los que quedan son noticias de verdad requiere
-criterio y lo hace el LLM — ver spec.md §6, paso 4.
+criterio y lo hace el LLM: ver spec.md §6, paso 4.
 
 ## Por qué preferimos la parte de texto plano
 
@@ -178,7 +178,7 @@ def _links_de_texto(texto):
     resultado = []
     for i, linea in enumerate(lineas):
         for url in _RE_URL.findall(linea):
-            antes = " ".join(l.strip() for l in lineas[max(0, i - 2) : i] if l.strip())
+            antes = " ".join(l.strip() for l in lineas[max(0, i - 2): i] if l.strip())
             propio = linea.replace(url, " ").strip()
             resultado.append((url, propio or antes))
     return resultado

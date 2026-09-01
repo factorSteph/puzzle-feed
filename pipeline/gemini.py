@@ -10,7 +10,7 @@ hay ni uno.
 Está medido contra la API real, no supuesto (spec.md §14):
 
     gemini-flash-lite-latest   200 OK, JSON válido contra el esquema, 18.8 s
-    gemini-flash-latest        503 UNAVAILABLE — "high demand"
+    gemini-flash-latest        503 UNAVAILABLE: "high demand"
 
 La capa gratuita devuelve 503 por congestión de Google, no por culpa nuestra ni
 de la key. Sin reintento y sin modelos de respaldo, una corrida se cae por algo
@@ -25,7 +25,7 @@ De ahí las tres defensas:
 ## Cómo falla
 
 Nunca con una excepción suelta, nunca devolviendo un dict vacío que parezca
-éxito. Siempre `(None, "motivo legible")` — y ese motivo termina visible en el
+éxito. Siempre `(None, "motivo legible")`, y ese motivo termina visible en el
 dashboard (regla 4 del proyecto: ningún fallo en silencio).
 
 ## Sobre los esquemas
@@ -214,7 +214,7 @@ class Cliente:
         """Cierra la contabilidad de una llamada perdida y devuelve su motivo."""
         self.segundos += time.monotonic() - arranque
         self.fallos += 1
-        self._avisar(f"{etiqueta}: SIN RESULTADO — {motivo}")
+        self._avisar(f"{etiqueta}: SIN RESULTADO: {motivo}")
         return None, f"modelo_no_disponible: {motivo}"
 
     def _avisar(self, texto):
@@ -252,7 +252,7 @@ def _leer_respuesta(respuesta):
 
     if razon == "MAX_TOKENS":
         # El JSON viene cortado a la mitad: parsearlo daría basura. Este motivo
-        # es accionable a propósito — dice qué hacer, no solo qué pasó.
+        # es accionable a propósito: dice qué hacer, no solo qué pasó.
         return None, (
             f"la respuesta se cortó en el límite de {MAXIMO_DE_SALIDA} tokens; "
             "hay que partir el lote en pedazos más chicos"

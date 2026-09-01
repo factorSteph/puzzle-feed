@@ -3,7 +3,7 @@
 # Copiala a `config/descartados.local.yml` y llenala con tus propios remitentes.
 # El archivo real está en .gitignore: nunca se commitea.
 #
-# Es OPCIONAL. Sin él, el pipeline funciona igual — la lista de admitidos de fuentes.yml
+# Es OPCIONAL. Sin él, el pipeline funciona igual: la lista de admitidos de fuentes.yml
 # ya deja todo lo demás fuera. Esto solo sirve para que el reporte agrupe los
 # descartes por motivo en vez de amontonarlos en "desconocidos".
 #

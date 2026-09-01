@@ -7,15 +7,15 @@ sin tocar nada.
 
 ## Qué hace, y qué NO
 
-Sobre cada correo que SÍ se procesó —el que aportó piezas al feed o cursos—:
+Sobre cada correo que SÍ se procesó (el que aportó piezas al feed o cursos):
 
   1. le aplica su etiqueta de categoría (`PuzzleFeed/AI-Tech`, …),
   2. le aplica `PuzzleFeed/Procesado`, que es la memoria del pipeline (D8),
   3. lo marca leído (D12),
   4. lo saca de la bandeja de entrada.
 
-Sobre todo lo demás —descartados, desconocidos, y los correos cuyo paso de LLM
-falló— **no hace nada**. Ni etiqueta, ni marca, ni mueve. La razón es D12 y
+Sobre todo lo demás (descartados, desconocidos, y los correos cuyo paso de LLM
+falló) **no hace nada**. Ni etiqueta, ni marca, ni mueve. La razón es D12 y
 D17: el agente no los leyó ni los resumió, así que no puede afirmar que la
 lectora ya los vio, y dejarlos sin la etiqueta es lo que hace que la corrida
 siguiente los reintente.
@@ -30,7 +30,7 @@ etiquetar son la misma operación acá, y por eso es reversible: volver a poner
 ## Reversibilidad
 
 Todo lo que toca queda marcado con `PuzzleFeed/Procesado`. Si algún día hay que
-deshacerlo, esa etiqueta dice exactamente cuáles fueron —ningún otro correo del
+deshacerlo, esa etiqueta dice exactamente cuáles fueron: ningún otro correo del
 buzón la tiene.
 """
 
@@ -122,7 +122,7 @@ def aplicar(imap, carpeta, plan, simular=True, archivar=True):
                 #
                 # Ojo con las barras: acá hace falta que al servidor le llegue
                 # `(\Inbox)`, y en un literal de Python eso se escribe con dos.
-                # Escribirlo con cuatro —que es lo que parecía correcto— le
+                # Escribirlo con cuatro (que es lo que parecía correcto) le
                 # manda `(\\Inbox)` y Gmail responde "Could not parse command".
                 _exigir(imap.uid("STORE", uid, "-X-GM-LABELS", "(\\Inbox)"),
                         f"uid {uid}: no pude sacarlo de la bandeja")

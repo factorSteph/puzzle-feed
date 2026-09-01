@@ -1,13 +1,13 @@
-# Spec — Puzzle Feed
+# Spec de Puzzle Feed
 
-> Versión 3 — actualizada el 2026-09-01 tras construir y correr el bloque 3b contra el
+> Versión 3, actualizada el 2026-09-01 tras construir y correr el bloque 3b contra el
 > buzón real. Cada versión la corrigieron los datos, no una discusión: ver §11 (lo que
 > corrigió el escaneo del buzón) y §15 (lo que corrigió la primera corrida del pipeline).
 
 ## 1. Problem statement
 
-Steph recibe correo de múltiples newsletters de AI/tech/emprendimiento/soporte a mujeres,
-más spam de marketing/wellness/prediction markets. El volumen abruma (~356 correos sin
+Recibo correo de varias newsletters de AI, tecnología, emprendimiento y apoyo a
+mujeres, más publicidad de marketing y wellness. El volumen abruma (~356 correos sin
 leer al momento del escaneo), hay contenido repetido entre fuentes, y para cuando tiene
 tiempo de leer, la información ya perdió vigencia. No existe un ciclo donde la información
 entrante se convierta en algo propio (reflexión, contenido) antes de volverse obsoleta.
@@ -29,7 +29,7 @@ Estas salieron de la entrevista de diseño. No se cambian sin volver a conversar
 
 | # | Decisión | Razón |
 |---|---|---|
-| D1 | El agente **nunca** escribe en Notion | El paso a Notion es criterio de Steph |
+| D1 | El agente **nunca** escribe en Notion | Qué pasa a Notion lo decido yo, a mano, después de leer |
 | D2 | Lectura de Gmail por **IMAP + app password** | Ya existe la credencial; `imaplib` es stdlib; un solo secret lee y escribe. Habilita el etiquetado (D8), que OAuth read-only bloquearía |
 | D3 | Modelo: **Gemini, capa gratuita** vía REST | Costo cero real. El volumen (≈24 items cada 2 días) entra de sobra en los límites del free tier. Se acepta a conciencia que en capa gratuita Google puede usar el contenido para mejorar sus modelos: son newsletters públicas y resúmenes de ellas |
 | D4 | **Sin banderas, el pipeline no escribe nada** | Ni archivos, ni Gmail. Procesa, reporta en la terminal y se va. Cada salida se pide explícitamente, y las que tocan algo de afuera tienen `--simular`. Un pipeline que escribe por defecto es un pipeline que un día escribe donde no debía |
@@ -37,20 +37,20 @@ Estas salieron de la entrevista de diseño. No se cambian sin volver a conversar
 | D6 | El dashboard es **público y sirve de portafolio** | Es la mitad del propósito del proyecto: no solo procesar el correo, también mostrar cómo se procesó. Por eso el repositorio es público y por eso §7 existe |
 | D7 | El resumen se genera del **artículo original**, no del blurb del newsletter | El blurb ya viene editorializado; resumir un resumen sesgado duplica el sesgo |
 | D8 | Estado en Gmail vía etiqueta **`PuzzleFeed/Procesado`** | Idempotencia sin base de datos, sin tocar la taxonomía existente |
-| D9 | Frecuencia: **cada 2 días** | — |
+| D9 | Frecuencia: **cada 2 días** | Sin más razón que el ritmo al que se acumula |
 | D10 | Gamificación tipo rompecabezas, **sin puntos ni rachas** | Las piezas se encienden al marcarlas leídas y salen del tablero. Se avanza leyendo, no scrolleando |
 | D11 | En archivos públicos solo aparecen **suscripciones públicas** | Un remitente revela algo: a qué banco pertenecés, dónde te postulaste, qué médico usás. Ver §7.1 |
 | D12 | Los correos que **entran al feed o a cursos** se marcan **leídos**; nada más se toca | Si el contenido ya está resumido en el dashboard, el correo no tiene por qué seguir en negrita. Los descartados y desconocidos quedan intactos: el agente no los leyó ni los resumió, así que no puede decir que vos ya los viste. Reversible: la etiqueta identifica exactamente cuáles tocó |
 | D13 | El feed se agrupa **por semana** en el dashboard | Se revisa cada 2 días; si pasan varios sin abrirlo, una lista plana se vuelve inmanejable |
-| D14 | **Hilos**: piezas distintas que juntas dicen algo. Públicos | Es la mecánica de rompecabezas aplicada al contenido. Son metadato editorial sobre noticias públicas: no revelan nada de quien lee. Solo dentro de una corrida — entre corridas sigue siendo supersesión y sigue fuera del MVP |
+| D14 | **Hilos**: piezas distintas que juntas dicen algo. Públicos | Es la mecánica de rompecabezas aplicada al contenido. Son metadato editorial sobre noticias públicas: no revelan nada de quien lee. Solo dentro de una corrida: entre corridas sigue siendo supersesión y sigue fuera del MVP |
 | D15 | Las fuentes son **`agregador`, `autor` o `compendio`** | Medido: Nerd Processor trae 5.500 caracteres de ensayo y nueve links, todos de tracking hacia posts anteriores; No Pasa Nada trae 8.100 caracteres con **varias** noticias y ocho links de tracking sin texto de ancla. Ninguno apunta al texto que estás leyendo. Para las dos, el correo **es** el artículo original y D7 se cumple mejor resumiéndolo que siguiendo links. Tratadas como agregador desaparecían del feed enteras, en silencio para la lectora. `autor` da un item por correo, `compendio` da varios |
-| D16 | La **categoría sale de `fuentes.yml`**, no del modelo | §5 la mapea por fuente y §6 se la pedía al LLM: el spec se contradecía. Medido: con el modelo eligiendo, una nota de regulación llegada por The Rundown AI caía en "Noticias" y rompía el agrupamiento. Gana §5, por el principio que el propio §6 fija — lo verificable es una función |
+| D16 | La **categoría sale de `fuentes.yml`**, no del modelo | §5 la mapea por fuente y §6 se la pedía al LLM: el spec se contradecía. Medido: con el modelo eligiendo, una nota de regulación llegada por The Rundown AI caía en "Noticias" y rompía el agrupamiento. Gana §5, por el principio que el propio §6 fija: lo verificable es una función |
 | D17 | Un correo que **falla no se marca** como procesado | No detiene la corrida: se registra y se sigue. Pero marcarlo leído diría "ya lo viste" de algo que nadie resumió, que es justo lo que D12 prohíbe. Sin etiqueta, la corrida siguiente lo reintenta gratis; la ventana de `newer_than` lo saca del rango sola a los pocos días |
 | D18 | El modelo **jerarquiza los links, no los clasifica** | Medido: preguntar "¿es noticia?" daba 50 items de 6 correos, porque en un newsletter de tecnología casi todo lo es. Preguntar "¿cuáles son las N más importantes?" da 19. El tope es un parámetro (`--por-correo`), no una constante: el día a día y vaciar backlog piden números distintos |
-| D19 | Cada pieza lleva **`tema`** de una lista cerrada de ocho | La categoría viene de la fuente (D16) y cinco de las seis fuentes son de tecnología: medido, 64 de 66 piezas caían en "AI & Tech" y el agrupamiento no agrupaba nada. El tema parte la categoría por dentro. La lista es cerrada porque si el modelo los inventa, cada corrida arma secciones distintas y el tablero deja de ser reconocible. El orden en el dashboard es fijo —primero lo que cambia las reglas o el trabajo, al final lo que solo informa— para que no haya que reorientarse en cada corrida |
-| D20 | Cada pieza lleva **por qué importa, el dato concreto y por dónde se empieza** | La vara: si después de leer el resumen hay que abrir el link para entender de qué se trata, el resumen falló. Sin esto el feed decía "existe un cambio de configuración que lo arregla" sin decir cuál, o "Tencent presentó" sin decir quién es Tencent. `dato_concreto` y `como_aplicarlo` pueden ser `null` — un null honesto vale más que un relleno |
+| D19 | Cada pieza lleva **`tema`** de una lista cerrada de ocho | La categoría viene de la fuente (D16) y cinco de las seis fuentes son de tecnología: medido, 64 de 66 piezas caían en "AI & Tech" y el agrupamiento no agrupaba nada. El tema parte la categoría por dentro. La lista es cerrada porque si el modelo los inventa, cada corrida arma secciones distintas y el tablero deja de ser reconocible. El orden en el dashboard es fijo (primero lo que cambia las reglas o el trabajo, al final lo que solo informa) para que no haya que reorientarse en cada corrida |
+| D20 | Cada pieza lleva **por qué importa, el dato concreto y por dónde se empieza** | La vara: si después de leer el resumen hay que abrir el link para entender de qué se trata, el resumen falló. Sin esto el feed decía "existe un cambio de configuración que lo arregla" sin decir cuál, o "Tencent presentó" sin decir quién es Tencent. `dato_concreto` y `como_aplicarlo` pueden ser `null`: un null honesto vale más que un relleno |
 | D21 | Las piezas que **no se pudieron leer del original** van aparte | Se resumen del blurb, que ya viene editorializado, y muchas veces no traen el dato que hace útil la noticia. Van a una tira propia ("Rapiditas") en vez de competir de igual a igual con lo que sí se leyó completo. No se borran: eso sería descartar en silencio |
-| D22 | **Extiende D12**: los correos procesados se etiquetan por categoría y se **archivan** | Steph lo pidió el 2026-09-01. Cada correo recibe `PuzzleFeed/<Categoría>` más `PuzzleFeed/Procesado`, se marca leído y sale de la bandeja. En Gmail no hay carpetas —la bandeja es una etiqueta más— así que archivar es quitar `\Inbox`, y es reversible. Lo que D12 protegía sigue protegido: lo descartado, lo desconocido y lo que falló no se toca. Escribir en el buzón es opt-in (`--marcar`) y tiene `--simular`, que imprime el plan exacto sin ejecutarlo |
+| D22 | **Extiende D12**: los correos procesados se etiquetan por categoría y se **archivan** | Decidido el 2026-09-01. Cada correo recibe `PuzzleFeed/<Categoría>` más `PuzzleFeed/Procesado`, se marca leído y sale de la bandeja. En Gmail no hay carpetas (la bandeja es una etiqueta más) así que archivar es quitar `\Inbox`, y es reversible. Lo que D12 protegía sigue protegido: lo descartado, lo desconocido y lo que falló no se toca. Escribir en el buzón es opt-in (`--marcar`) y tiene `--simular`, que imprime el plan exacto sin ejecutarlo |
 | D23 | El feed público se arma con **lista de campos permitidos** | Al revés de lo intuitivo: sería más corto enumerar lo que se excluye. Con lista de excluidos, un campo nuevo se publicaría solo por olvidar agregarlo; con lista de admitidos no sale hasta que alguien lo decida. Ya evitó una fuga real: el `uid` interno que se le agregó a los cursos para poder etiquetarlos nunca llegó al archivo |
 
 ## 4. Alcance del MVP
@@ -74,13 +74,11 @@ Estas salieron de la entrevista de diseño. No se cambian sin volver a conversar
 **Fuera de alcance (fases futuras):**
 
 - Escritura automática a Notion.
-- Conexión con el contenido propio ya publicado de Steph. *(Nota: el spec v1 lo difería
-  "hasta que haya suficiente contenido acumulado". Steph publicó su primer post en
-  Substack y LinkedIn desde julio de 2026, así que esta condición empezó a cumplirse —
-  pero sigue fuera del MVP.)*
+- Conexión con lo que ya publiqué. *(El spec v1 lo difería "hasta que haya suficiente
+  contenido acumulado"; esa condición empezó a cumplirse, pero sigue fuera del MVP.)*
 - Badges, rachas o puntos.
 - **Supersesión**: marcar una pieza como superada cuando una posterior la reemplaza
-  (salió Grok 4.6 y tres días después 4.7). No es deduplicación — dedup es "dos fuentes
+  (salió Grok 4.6 y tres días después 4.7). No es deduplicación: dedup es "dos fuentes
   contaron lo mismo hoy"; supersesión es "lo de la semana pasada ya no aplica". Requiere
   comparar contra el histórico del feed, no solo dentro de la corrida. Muy valiosa para
   un feed cada 2 días, pero se difiere para no arriesgar el MVP.
@@ -105,7 +103,7 @@ arranca pronto" con fecha, link y si es gratis o pago.
 
 ```
 1. Ingest      IMAP: correos sin etiqueta PuzzleFeed/Procesado, de remitentes admitidos
-2. Filtrar     Descartar todo lo demás. Cada descarte imprime su motivo — nunca en silencio
+2. Filtrar     Descartar todo lo demás. Cada descarte imprime su motivo: nunca en silencio
 
    ── fuentes `agregador` (D15) ────────────────────────────────────────────
 3. Extraer     Sacar links del HTML, seguir redirecciones de tracking hasta la URL real
@@ -136,7 +134,7 @@ del modelo justo en la tarea donde equivocarse es caro.
 
 **Dónde se justifica un LLM y dónde no.** Los pasos de criterio son LLM. Los pasos 3 y 5
 tienen respuesta verificable: son funciones. No se despliegan agentes para bajar y limpiar
-HTML — ni para asignar una categoría que ya está escrita en `fuentes.yml` (D16).
+HTML: ni para asignar una categoría que ya está escrita en `fuentes.yml` (D16).
 
 ## 7. Privacidad: qué es público y qué no
 
@@ -145,8 +143,8 @@ significa que todo lo que llegue a `feed.json` lo puede leer cualquiera.
 
 **La regla:** GitHub Pages sirve archivos estáticos. No hay servidor que decida quién ve
 qué; cualquiera puede abrir `/docs/feed.json` directo o mirar la pestaña Network. **Si el
-dato llega al navegador, es público.** Esconderlo en el frontend —por CSS, o en un campo
-que el frontend ignora— es maquillaje, no privacidad. De ahí sale la consecuencia
+dato llega al navegador, es público.** Esconderlo en el frontend (por CSS, o en un campo
+que el frontend ignora) es maquillaje, no privacidad. De ahí sale la consecuencia
 operativa: lo que no pueda ser público no se escribe en el archivo.
 
 | Dato | Público | Local |
@@ -162,19 +160,22 @@ operativa: lo que no pueda ser público no se escribe en el archivo.
 
 **Cómo se sostiene, y no por disciplina.** `feed.json` se arma **enumerando los campos
 permitidos**, uno por uno; todo lo que no esté en esa lista se descarta. Es al revés de
-lo intuitivo —sería más corto enumerar lo que se excluye— y es a propósito: enumerando
+lo intuitivo (sería más corto enumerar lo que se excluye) y es a propósito: enumerando
 exclusiones, un campo nuevo del pipeline se publicaría solo por olvidar agregarlo. Ya
 evitó una fuga real (D23).
 
 ### 7.1 La regla de los remitentes
 
-**En un archivo público solo pueden aparecer suscripciones públicas** — newsletters a
+**En un archivo público solo pueden aparecer suscripciones públicas**: newsletters a
 las que cualquiera se puede suscribir. Nada más.
 
 La razón es que **un remitente es un dato personal aunque no sea tuyo**. La lista de
-descartes original incluía bancos, la CCSS, Hacienda y siete ATS de empresas donde Steph
-se postuló. Publicarla habría revelado a qué banco pertenece, qué servicios usa y dónde
-buscó trabajo — sin que ninguno de esos datos fuera necesario para nada.
+descartes original incluía entidades financieras, instituciones públicas y sistemas de
+reclutamiento. Publicarla habría revelado a qué banco pertenezco, con qué instituciones
+tramito y dónde busqué trabajo, sin que ninguno de esos datos fuera necesario para nada.
+
+Y el mismo cuidado vale para esta sección: **describir el contenido de la lista privada
+es publicarlo igual.** Por eso dice qué clase de remitentes eran y no cuáles.
 
 Por eso la configuración está partida en dos:
 
@@ -184,7 +185,7 @@ Por eso la configuración está partida en dos:
 | `config/descartados.local.yml` | Bancos, trámites, postulaciones | ❌ gitignored |
 | `config/descartados.local.yml.example` | Plantilla con datos de ejemplo | ✅ se commitea |
 
-No cuesta nada funcionalmente: con lista de admitidos, los descartes no filtran nada — solo
+No cuesta nada funcionalmente: con lista de admitidos, los descartes no filtran nada: solo
 sirven para agrupar el reporte por motivo. El archivo local es opcional.
 
 **Correos de personas nunca se listan, ni siquiera en el archivo local.**
@@ -199,12 +200,12 @@ silencio hacia afuera lo que tanto cuidamos adentro.
 Consecuencias aceptadas:
 - El estado "conectado" no sincroniza entre celular y compu, y se pierde al limpiar el
   navegador. Es el costo de no tener backend.
-- El dashboard revela qué newsletters lee Steph. Para un portafolio, es aceptable.
+- El dashboard revela qué newsletters leo. Para un portafolio, es aceptable.
 - Los resúmenes se publican con crédito y link a la fuente, y se mantienen cortos.
 
 ## 8. Modelo de datos
 
-**`feed.json` — público, se commitea al repo:**
+**`feed.json`: público, se commitea al repo:**
 
 ```json
 {
@@ -245,7 +246,7 @@ Consecuencias aceptadas:
 }
 ```
 
-**Estado local — `localStorage` del navegador:**
+**Estado local: `localStorage` del navegador:**
 
 ```json
 { "item_id": true }   // las piezas que ya se marcaron leídas
@@ -255,12 +256,12 @@ Consecuencias aceptadas:
 
 **El filtro es una lista de admitidos, al revés del job-alert-agent.** Allá el costo del error era
 asimétrico hacia dejar pasar: un buen empleo descartado se perdía para siempre. Acá se
-invierte — una noticia perdida reaparece mañana en otra newsletter, pero el ruido mata el
+invierte: una noticia perdida reaparece mañana en otra newsletter, pero el ruido mata el
 objetivo entero (revisar el feed en menos de 10 minutos). Además el universo de fuentes es
 chico y conocido. Costo aceptado: una newsletter nueva no entra hasta agregarla al config.
 
 **La lista de excluidos se documenta aunque no se ejecute.** Con lista de admitidos, `descartados_conocidos`
-en el config no hace nada funcionalmente. Se mantiene igual, porque cuando Steph se
+en el config no hace nada funcionalmente. Se mantiene igual, porque cuando alguien se
 pregunte "¿por qué no está X aquí?", la respuesta debe estar escrita. Es el principio
 "ningún filtro descarta sin decir por qué", aplicado a la configuración.
 
@@ -298,7 +299,7 @@ malformada del LLM se nombra en el log y, si afecta al item, en el dashboard.
 ## 12. Preguntas abiertas
 
 - Ninguna bloqueante para empezar a construir.
-- ~~Pendiente de Steph: confirmar la suscripción a Nerd Processor.~~ Confirmada; ya llega
+- ~~Pendiente: confirmar la suscripción a Nerd Processor.~~ Confirmada; ya llega
   (ver §15).
 - ~~A decidir cuando el pipeline funcione: si el dashboard se publica en GitHub Pages o se
   queda local.~~ **Decidido: las dos cosas.** Un solo `feed.json` alimenta el sitio
@@ -306,12 +307,12 @@ malformada del LLM se nombra en el log y, si afecta al item, en el dashboard.
   claude.ai. La única diferencia entre las dos es que en el artifact cada pieza puede
   preguntarle algo a un modelo; en GitHub Pages no, porque haría falta una API key en el
   navegador y ahí queda expuesta a cualquiera. Por eso **todo el contexto que la lectora
-  necesita se pre-genera en el pipeline** —qué es cada empresa, por qué importa, el dato
-  concreto, por dónde se empieza— y el chat queda como extra, no como plan.
-- **Abierta, para el bloque 4: mover los correos procesados a una carpeta.** Steph lo
-  pidió el 2026-09-01, y contradice lo que hay escrito: §4 tiene "archivar o mover
+  necesita se pre-genera en el pipeline** (qué es cada empresa, por qué importa, el dato
+  concreto, por dónde se empieza) y el chat queda como extra, no como plan.
+- **Abierta, para el bloque 4: mover los correos procesados a una carpeta.** Decidido
+  el 2026-09-01, y contradice lo que había escrito: §4 tiene "archivar o mover
   correos" fuera de alcance y D12 dice "se marcan leídos; nada más se toca". En Gmail
-  "mover a carpeta" es aplicar la etiqueta y quitar `\Inbox` — es reversible y la
+  "mover a carpeta" es aplicar la etiqueta y quitar `\Inbox`: es reversible y la
   etiqueta deja rastro de qué tocó el agente, pero sería la primera escritura de verdad
   sobre el buzón. Antes de hacerlo hay que cerrar: a qué carpeta va cada cosa, si se
   mueven también los correos de cursos, y si conviene un `--simular` que imprima lo que
@@ -319,20 +320,20 @@ malformada del LLM se nombra en el log y, si afecta al item, en el dashboard.
 
 ## 13. Criterio de éxito del MVP
 
-Steph abre el dashboard día de por medio, en menos de 10 minutos identifica 1-2 piezas que
-le aportan, y sale con al menos una idea que ella misma desarrolla — sin haber tenido que
-leer los correos originales.
+Abro el dashboard día de por medio, en menos de 10 minutos identifico 1 o 2 piezas que me
+aportan, y salgo con al menos una idea propia, sin haber tenido que leer los correos
+originales.
 
 **Criterio secundario:** el dashboard es mostrable como portafolio sin exponer nada suyo.
 
 ## 14. Notas de implementación del LLM (medidas, no supuestas)
 
-Probado contra la API real el 2026-08-25 con la key de Steph:
+Probado contra la API real el 2026-08-25:
 
 | Modelo | Resultado |
 |---|---|
 | `gemini-flash-lite-latest` | ✅ 200, JSON estructurado válido, **18.8 s** para 57 tokens de entrada |
-| `gemini-flash-latest` | ⚠️ 503 `UNAVAILABLE` — "high demand" |
+| `gemini-flash-latest` | ⚠️ 503 `UNAVAILABLE`: "high demand" |
 
 Tres consecuencias de diseño:
 
@@ -342,8 +343,8 @@ Tres consecuencias de diseño:
 2. **La latencia es impredecible, no alta.** Los 18,8 s de arriba fueron un mal
    momento, no la norma: medido sobre corridas completas del pipeline, la misma
    llamada tarda entre **0,9 s y 86 s**. Una corrida real de 9 correos hace 22
-   llamadas en **155 segundos**. Igual se agrupa —una llamada por correo, no por
-   item— porque con esa varianza, 96 llamadas serían una lotería.
+   llamadas en **155 segundos**. Igual se agrupa (una llamada por correo, no por
+   item) porque con esa varianza, 96 llamadas serían una lotería.
 3. **`responseSchema` funciona bien** y devuelve JSON válido contra el esquema. No hay
    que parsear texto libre ni pedirle al modelo que "responda solo JSON".
 
@@ -365,7 +366,7 @@ Medido el 2026-09-01 contra el buzón real, corriendo el pipeline completo.
   post del día. Ver D15.
 - **El volumen es 3× lo que el spec asumía.** §4 daba por hecho "≈24 items cada 2
   días". Con el filtro original, 9 correos de 3 días producían **41 items**, y eso ya
-  con un tope de 8 por correo: sin tope habrían sido ~70. La causa no es el backlog —
+  con un tope de 8 por correo: sin tope habrían sido ~70. La causa no es el backlog,
   son cinco newsletters diarias que traen entre 10 y 18 noticias legítimas cada una.
   Con D18 la misma ventana da 26 items.
 - **TLDR y No Pasa Nada no son diarias.** Medido sobre 14 días: 8 y 6 ediciones
@@ -374,9 +375,13 @@ Medido el 2026-09-01 contra el buzón real, corriendo el pipeline completo.
   legítimos: bloqueo del sitio (Bloomberg, Wired), texto demasiado corto, un servidor
   que devuelve `text/markdown`. El fallback al blurb con badge visible (§10) no es un
   caso raro: es un tercio del feed.
+- **La corrida de referencia, con todo aplicado.** Con `--dias 2`, que es la frecuencia
+  real del feed (D9): **25 piezas, de las cuales 15 principales y 10 breves; 17 llamadas
+  al modelo; 264 segundos; cero fallos.** Es el número que cita el README, y el que hay
+  que comparar contra las corridas siguientes para saber si algo se degradó.
 - **El dedup rinde menos de lo esperado.** De 45 items, solo 4 grupos duplicados. Las
   fuentes se solapan menos de lo que parecía, así que no se puede contar con el dedup
-  para bajar el volumen — hay que filtrar antes.
+  para bajar el volumen: hay que filtrar antes.
 
 ### 15.1 La primera escritura sobre el buzón
 
@@ -390,7 +395,7 @@ manda `(\\Inbox)`; Gmail contestó `BAD Could not parse command` y tenía razón
 **Lo que en realidad estaba mal.** El módulo atrapaba `RuntimeError`, pero `imaplib` a
 veces devuelve `("BAD", …)` y otras veces levanta su propia excepción, según dónde se
 rompa el comando. Esa segunda se escapó, y el fallo de UN correo abortó los otros seis
-—exactamente lo que el diseño decía que no debía pasar—. El comentario del código ahora
+(exactamente lo que el diseño decía que no debía pasar). El comentario del código ahora
 lo dice, porque es el tipo de cosa que se vuelve a escribir mal dentro de seis meses.
 
 **Lo que sí funcionó, y por qué importa.** El correo que falló alcanzó a recibir etiqueta

@@ -1,4 +1,4 @@
-# Puzzle Feed — fuentes del feed
+# Puzzle Feed: fuentes del feed
 #
 # ESTE ARCHIVO ES PÚBLICO. Se commitea y cualquiera puede leerlo.
 # Por eso solo contiene SUSCRIPCIONES PÚBLICAS: newsletters a las que cualquiera
@@ -8,7 +8,7 @@
 # `descartados.local.yml`, que está en .gitignore y nunca sale de tu máquina.
 #
 # Este archivo es la LISTA DE ADMITIDOS: solo entra al feed lo que esté acá listado.
-# El filtro es por REMITENTE EXACTO, nunca por dominio — therundown.ai manda desde
+# El filtro es por REMITENTE EXACTO, nunca por dominio: therundown.ai manda desde
 # cuatro direcciones y solo dos son noticias.
 #
 # ── El campo `tipo` ──────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@
 # caracteres de ensayo y nueve links, TODOS de tracking hacia posts anteriores,
 # la suscripción o el sitio. Ninguno apunta al texto que estás leyendo. Tratarlo
 # como agregador hacía que el feed trajera sus posts VIEJOS y se perdiera el del
-# día — que es justamente el que vale.
+# día, que es justamente el que vale.
 #
 # Para las fuentes `autor` hace falta `sitio`: el correo no trae permalink, así
 # que es la única URL honesta que el dashboard puede ofrecer.
@@ -90,7 +90,7 @@ fuentes:
 
 
 # Sección aparte del dashboard: "Free Courses Coming Up Next".
-# No llevan resumen profundo — solo título, fecha, link y si es gratis.
+# No llevan resumen profundo: solo título, fecha, link y si es gratis.
 cursos_eventos:
 
   - remitente: hi@learn.therundown.ai

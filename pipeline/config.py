@@ -11,8 +11,9 @@ Hay tres archivos, separados por lo que se puede publicar y lo que no:
     .env                           →  CON QUÉ entramos. LOCAL, en .gitignore.
 
 La separación no es cosmética: el repo es público y el dashboard es portafolio.
-Los descartes son un mapa de la vida privada de Steph (a qué banco le pertenece,
-dónde se postuló, qué servicios usa) y no tienen por qué salir de su máquina.
+Los descartes son un mapa de la vida privada de quien usa esto: a qué banco
+pertenece, con qué instituciones tramita, qué servicios usa. No tienen por qué
+salir de su máquina.
 
 Funcionalmente los descartes no hacen falta: el pipeline usa lista de admitidos, así que
 lo que no está en fuentes.yml ya queda fuera. La lista local solo sirve para que el
@@ -65,7 +66,7 @@ def cargar_fuentes():
 
     Devuelve (fuentes, cursos, descartados). `descartados` mapea cada remitente
     conocido al motivo por el que está fuera, y viene vacío si no existe el
-    archivo local — que es opcional a propósito.
+    archivo local, que es opcional a propósito.
     """
     if not ARCHIVO_FUENTES.exists():
         raise ErrorDeConfiguracion(f"No encuentro el archivo de fuentes: {ARCHIVO_FUENTES}")
