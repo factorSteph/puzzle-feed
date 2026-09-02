@@ -1,5 +1,7 @@
 # Puzzle Feed
 
+> 🔗 **[Ver el tablero en vivo ↗](https://factorsteph.github.io/puzzle-feed/)**
+>
 > 🇬🇧 **[English version below ↓](#english)**
 >
 > 📖 **[¿Alguna palabra no te suena? Glosario sin jerga ↓](#glosario-sin-jerga)**
@@ -115,7 +117,7 @@ Ver [`spec.md`](spec.md) §7 para el detalle completo.
 | 3a. Links y artículos | Extracción de links, descarga y limpieza del texto | ✅ |
 | 3b. Análisis | Elegir, resumir, clasificar por tema, deduplicar, hilar | ✅ |
 | 4. Salidas | `feed.json`, etiquetado y archivado en Gmail | ✅ |
-| 5. Tablero | HTML/JS estático leyendo `feed.json` | ⬜ |
+| 5. Tablero | HTML/JS estático leyendo `feed.json` | ✅ |
 | 6. Automatización | GitHub Actions cada 2 días | ⬜ |
 
 Medido el 2026-09-01 sobre el buzón real, con la ventana de 2 días que es la frecuencia
@@ -378,6 +380,8 @@ no están acá y nunca van a estar.
 
 # 🇬🇧 English
 
+> 🔗 **[See the live board ↗](https://factorsteph.github.io/puzzle-feed/)**
+>
 > 🇨🇷 **[Volver al español ↑](#puzzle-feed)**. Spanish is the original; this is a
 > translation. The spec, the code and its comments are in Spanish.
 
@@ -489,7 +493,7 @@ isn't yours.
 | 3a. Links and articles | Link extraction, fetching and text cleanup | ✅ |
 | 3b. Analysis | Pick, summarize, classify by topic, deduplicate, thread | ✅ |
 | 4. Outputs | `feed.json`, labeling and archiving in Gmail | ✅ |
-| 5. Board | Static HTML/JS reading `feed.json` | ⬜ |
+| 5. Board | Static HTML/JS reading `feed.json` | ✅ |
 | 6. Automation | GitHub Actions every 2 days | ⬜ |
 
 Measured on 2026-09-01 against the real inbox, over the 2-day window that matches the
