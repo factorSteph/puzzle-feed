@@ -15,12 +15,6 @@ Uso:
     python pipeline/main.py --sin-llm            # solo ingesta, sin gastar modelo
     python pipeline/main.py --publicar --marcar  # escribir el feed y ordenar Gmail
 
-## El gancho local
-
-Si existe `pipeline/local.py`, se carga y se le pasa el feed ya armado. Está
-en .gitignore: lo que cada quien haga con su propio feed no tiene por qué vivir
-en un repositorio público. Sin ese archivo el pipeline funciona igual.
-
 ## Sobre los correos que fallan
 
 Un correo cuyo paso de LLM falla no detiene la corrida: se registra la
@@ -653,7 +647,7 @@ def main():
     )
     salidas.add_argument(
         "--local", action="store_true",
-        help="ejecutar el gancho local (pipeline/local.py), si existe",
+        help="correr las extensiones locales, si hay alguna",
     )
     salidas.add_argument(
         "--marcar", action="store_true",
@@ -746,11 +740,11 @@ def main():
 
 
 def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cliente):
-    """Escribe el feed, corre el gancho local y marca en Gmail: lo pedido.
+    """Escribe el feed, corre las extensiones y marca en Gmail: lo pedido.
 
     Va en este orden a propósito, de menos a más irreversible: primero el
-    archivo, que se puede borrar; después lo que el gancho local haga, que
-    puede salir de la máquina; y al final el buzón. Si algo falla antes, lo de
+    archivo, que se puede borrar; después lo que una extensión haga, que puede
+    salir de la máquina; y al final el buzón. Si algo falla antes, lo de
     después no pasa.
     """
     fecha_feed = _fecha_del_feed(items)
@@ -767,8 +761,8 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
             return 1
 
     if args.local:
-        titulo("GANCHO LOCAL" + ("  (simulación)" if args.simular else ""))
-        correr_gancho_local(args, usuario, password, items, hilos, fecha_feed, cliente)
+        titulo("EXTENSIONES LOCALES" + ("  (simulación)" if args.simular else ""))
+        correr_extensiones(args, usuario, password, items, hilos, fecha_feed, cliente)
 
     if args.marcar:
         return marcar_en_gmail(args, usuario, password, correos, items, cursos)
@@ -776,42 +770,43 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
     return 0
 
 
-def correr_gancho_local(args, usuario, password, items, hilos, fecha_feed, cliente):
-    """Corre `pipeline/local.py` si existe, y si no, sigue de largo.
+def correr_extensiones(args, usuario, password, items, hilos, fecha_feed, cliente):
+    """Corre las extensiones locales del pipeline, si hay alguna.
 
-    Es el punto de extensión del pipeline: recibe el feed ya armado y hace lo
-    que quiera con él. Ese archivo está en .gitignore porque lo que cada quien
-    haga con su propio feed no tiene por qué vivir en un repositorio público.
+    Mismo criterio que `config/*.local.yml`: un `*.local.py` es de quien corre
+    el pipeline, no del repositorio, y por eso el patrón está en .gitignore.
+    Sin ninguno, el pipeline hace exactamente lo mismo y sigue de largo.
 
-    Lo que imprima sale solo en la terminal de quien corre el pipeline. Nada de
-    esto toca `feed.json`: el feed público ya se escribió antes, con su propia
-    enumeración de campos permitidos.
+    Lo que impriman sale solo en la terminal de quien corre el pipeline. Nada
+    de esto toca `feed.json`: el feed público ya se escribió antes, con su
+    propia enumeración de campos permitidos.
     """
-    ruta = pathlib.Path(__file__).with_name("local.py")
-    if not ruta.exists():
-        print("\n  (no hay gancho local: pipeline/local.py no existe)")
+    rutas = sorted(pathlib.Path(__file__).parent.glob("*.local.py"))
+    if not rutas:
+        print("\n  (no hay extensiones locales)")
         return
 
-    especificacion = importlib.util.spec_from_file_location("local", ruta)
-    modulo = importlib.util.module_from_spec(especificacion)
-    try:
-        especificacion.loader.exec_module(modulo)
-        lineas, incidencias = modulo.procesar(
-            cliente,
-            [i for i in items if "es_duplicado_de" not in i],
-            hilos, fecha_feed, usuario, password,
-            enviar_correo=True, simular=args.simular,
-        )
-    except Exception as error:
-        # Un gancho roto no puede tumbar la corrida: para cuando llega acá, el
-        # feed ya está escrito y Gmail todavía no se tocó.
-        print(f"  el gancho local falló: {type(error).__name__}: {error}", file=sys.stderr)
-        return
+    for ruta in rutas:
+        especificacion = importlib.util.spec_from_file_location(ruta.stem, ruta)
+        modulo = importlib.util.module_from_spec(especificacion)
+        try:
+            especificacion.loader.exec_module(modulo)
+            lineas, incidencias = modulo.procesar(
+                cliente,
+                [i for i in items if "es_duplicado_de" not in i],
+                hilos, fecha_feed, usuario, password,
+                enviar_correo=True, simular=args.simular,
+            )
+        except Exception as error:
+            # Una extensión rota no puede tumbar la corrida: para cuando llega
+            # acá, el feed ya está escrito y Gmail todavía no se tocó.
+            print(f"  {ruta.name} falló: {type(error).__name__}: {error}", file=sys.stderr)
+            continue
 
-    for linea in lineas:
-        print(linea)
-    for incidencia in incidencias:
-        print(f"  · {incidencia}", file=sys.stderr)
+        for linea in lineas:
+            print(linea)
+        for incidencia in incidencias:
+            print(f"  · {incidencia}", file=sys.stderr)
 
 
 def marcar_en_gmail(args, usuario, password, correos, items, cursos):

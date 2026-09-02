@@ -54,7 +54,7 @@ CAMPOS_HILO = ("titulo", "tipo", "que_dice_el_conjunto", "ids")
 # sobre el mundo); lo que no puede aparecer es un campo que lleve datos
 # privados.
 #
-# Un gancho local puede sumar los suyos por su cuenta; acá van los genéricos.
+# Una extensión local puede sumar los suyos por su cuenta; acá van los genéricos.
 PROHIBIDOS = ("privado", "local", "perfil", "interno", "secreto")
 
 

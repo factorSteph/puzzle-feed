@@ -10,10 +10,8 @@ token.json
 # Ver config/descartados.local.yml.example para la plantilla pública.
 config/*.local.yml
 
-# Ganchos locales del pipeline. `main.py` los carga si existen y sigue sin
-# ellos si no. Lo que cada quien haga con su propio feed no tiene por qué
-# vivir en un repositorio público.
-pipeline/local.py
+# Extensiones locales del pipeline, con el mismo criterio que los .local.yml
+# de arriba: son de quien corre el pipeline, no del repositorio.
 pipeline/*.local.py
 
 # ── Salidas locales ──────────────────────────────────────────────────────────

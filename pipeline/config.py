@@ -90,7 +90,7 @@ def cargar_fuentes():
 def cargar_perfil():
     """Lee `config/perfil.local.yml`, si alguien lo necesita.
 
-    El pipeline público no lo usa: existe para que un gancho local pueda leer
+    El pipeline público no lo usa: existe para que una extensión local pueda leer
     contexto propio sin inventarse su propio formato de configuración.
 
     Ojo con lo que se le agrega: está gitignored, pero nada impide que quien lo
