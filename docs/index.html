@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="Newsletters de IA y tecnologia, leidas desde el articulo original, resumidas y conectadas entre si.">
+<title>News Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Karla:wght@400;500;700&display=swap">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   Paleta sacada de las piezas de Steph: el banner de LinkedIn (fondo
+   casi negro, verde eléctrico, magenta, ámbar sobre retícula) y el logo
+   de CeliaTicos (teal + ámbar).
+
+   Tres ideas mandan sobre el resto:
+
+   1. Cada noticia tiene forma de pieza de rompecabezas de verdad —
+      bocados arriba y a la izquierda, tabs a la derecha y abajo — y en
+      la fila encajan una con otra.
+   2. El feed se VACÍA a medida que se lee. Encajar una pieza la saca
+      de la fila; el marcador de arriba lleva la cuenta. No se scrollea
+      para avanzar: se avanza marcando.
+   3. Todo se recorre en horizontal, como un tablero, no como una lista
+      que se desenrolla para abajo.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --fondo:      #060B0A;
+  --reticula:   rgba(0, 229, 160, .04);
+  --pieza:      #0F1816;
+  --borde:      #1E2C28;
+  --borde-vivo: #334640;
+
+  --texto:      #EAF3EF;
+  --texto-2:    #A8BDB5;
+  --texto-3:    #72897F;
+
+  --verde:      #00E5A0;
+  --magenta:    #FF3D9A;
+  --ambar:      #F5A623;
+  --naranja:    #FF6B35;
+  --lima:       #A3E635;
+  --teal:       #3FB8B8;
+
+  --paso:  clamp(1rem, 2.4vw, 1.75rem);
+  --ancho: 1460px;
+  --m: 17px;              /* radio de las muescas: fijo, no se deforma */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  background-image:
+    linear-gradient(var(--reticula) 1px, transparent 1px),
+    linear-gradient(90deg, var(--reticula) 1px, transparent 1px);
+  background-size: 46px 46px;
+  color: var(--texto);
+  font-family: Karla, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.envoltorio { max-width: var(--ancho); margin: 0 auto; padding: 0 var(--paso) 6rem; }
+h1, h2, h3, h4 { font-family: Outfit, Karla, system-ui, sans-serif; margin: 0; }
+a { color: inherit; }
+
+/* ── Cabecera ──────────────────────────────────────────────────────── */
+
+.cabecera {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 1.5rem 2.5rem; padding: 2.75rem 0 1.5rem;
+}
+.marca h1 {
+  font-weight: 800; font-size: clamp(2.3rem, 5.5vw, 3.7rem);
+  line-height: .92; letter-spacing: -.035em;
+}
+.marca h1 .n { color: var(--verde); }
+.marca h1 .f {
+  background: linear-gradient(96deg, var(--magenta), var(--ambar));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.marca .fecha { color: var(--texto-3); font-size: .95rem; margin-top: .45rem; }
+
+.avance { min-width: 280px; flex: 1; max-width: 460px; }
+.avance-fila {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: .55rem;
+}
+.avance-fila .n {
+  font-family: Outfit, sans-serif; font-weight: 800; font-size: 1.55rem;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.avance-fila .n b { color: var(--verde); }
+.avance-fila .r { color: var(--texto-3); font-size: .88rem; }
+
+.tira { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: .6rem; }
+.tira i {
+  width: 12px; height: 12px; border-radius: 2px;
+  background: var(--borde); transition: background .3s ease;
+}
+
+.ver-encajadas {
+  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+  background: transparent; border: 1px solid var(--borde-vivo);
+  color: var(--texto-3); padding: .3rem .7rem; border-radius: 999px;
+  transition: all .15s;
+}
+.ver-encajadas:hover { border-color: var(--verde); color: var(--texto-2); }
+.ver-encajadas:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+.ver-encajadas.si { background: var(--verde); border-color: var(--verde); color: var(--fondo); }
+.ver-encajadas[hidden] { display: none; }
+
+/* ── Franja de sección, con sus flechas ────────────────────────────── */
+
+.franja { display: flex; align-items: center; gap: 1rem; margin: 2.75rem 0 1.2rem; }
+.franja h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
+.franja .cuenta { color: var(--texto-3); font-size: .87rem; }
+
+/* Los temas van un escalón abajo de la categoría: más chicos, más juntos
+   y sin la barra a todo lo ancho, para que se lean como subdivisiones y
+   no como secciones nuevas. */
+.franja.tema { margin: 1.9rem 0 .9rem; gap: .8rem; }
+.franja.tema h2 { font-size: 1.02rem; font-weight: 600; letter-spacing: 0; }
+.franja.tema .barra { opacity: .22; height: 2px; }
+.franja.tema .cuenta { font-size: .8rem; }
+.franja .barra { flex: 1; height: 3px; border-radius: 2px; background: var(--acento, var(--borde)); opacity: .45; }
+
+.flechas { display: flex; gap: .4rem; flex: none; }
+.flecha {
+  width: 33px; height: 33px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--borde-vivo);
+  color: var(--texto-2); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.flecha:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
+.flecha:disabled { opacity: .25; cursor: default; }
+.flecha:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* ── Carril horizontal: todo se recorre de lado ────────────────────── */
+
+.carril {
+  display: flex; overflow-x: auto; scroll-behavior: smooth;
+  scroll-snap-type: x proximity; padding: var(--m) 0 1rem;
+  scrollbar-width: thin; scrollbar-color: var(--borde-vivo) transparent;
+}
+.carril::-webkit-scrollbar { height: 6px; }
+.carril::-webkit-scrollbar-thumb { background: var(--borde-vivo); border-radius: 3px; }
+.carril::-webkit-scrollbar-track { background: transparent; }
+
+/* Las piezas van pegadas para que el tab de una entre en el bocado de
+   la siguiente. Las otras tarjetas sí llevan separación. */
+.carril.piezas { gap: 0; }
+.carril.sueltas { gap: 1rem; }
+
+/* ── LA PIEZA ──────────────────────────────────────────────────────── */
+
+.p {
+  position: relative; flex: 0 0 400px; scroll-snap-align: start;
+  background: var(--pieza);
+  padding: calc(var(--m) + .9rem) 1.5rem 1.1rem;
+  display: flex; flex-direction: column; gap: .6rem;
+  box-shadow: inset 0 0 0 1px var(--borde);
+  transition: background .3s ease, box-shadow .25s ease, opacity .3s ease, transform .3s ease;
+
+  /* Dos bocados de tamaño fijo, uno arriba y otro a la izquierda. Se
+     hacen con máscara y no con círculos de color encima, para que el
+     recorte sea real: se ve la retícula del fondo a través de ellos. */
+  -webkit-mask-image:
+    radial-gradient(circle var(--m) at 50% 0, transparent 97%, #000 100%),
+    radial-gradient(circle var(--m) at 0 46%, transparent 97%, #000 100%);
+  -webkit-mask-composite: source-in;
+          mask-image:
+    radial-gradient(circle var(--m) at 50% 0, transparent 97%, #000 100%),
+    radial-gradient(circle var(--m) at 0 46%, transparent 97%, #000 100%);
+          mask-composite: intersect;
+}
+
+/* Los tabs que sobresalen: derecha y abajo */
+.p::after, .p::before {
+  content: ""; position: absolute;
+  width: calc(var(--m) * 2); height: calc(var(--m) * 2); border-radius: 50%;
+  background: var(--pieza);
+  box-shadow: inset 0 0 0 1px var(--borde);
+  transition: background .3s ease, box-shadow .25s ease;
+}
+.p::after  { right: calc(var(--m) * -1); top: 46%; margin-top: calc(var(--m) * -1); }
+.p::before { bottom: calc(var(--m) * -1); left: 50%; margin-left: calc(var(--m) * -1); }
+
+.p.leida, .p.leida::after, .p.leida::before {
+  background: color-mix(in srgb, var(--acento) 15%, var(--pieza));
+  box-shadow: inset 0 0 0 1px var(--acento);
+}
+
+/* Encajada = fuera de la fila. El feed se vacía leyendo, que es todo el
+   punto. Se pueden traer de vuelta con el botón del marcador. */
+.p.saliendo { opacity: 0; transform: scale(.9); }
+.p.leida { display: none; }
+body.ver-todo .p.leida { display: flex; }
+
+.p-meta {
+  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+  font-size: .8rem; color: var(--texto-3);
+}
+.p-meta .fu { color: var(--acento); font-weight: 700; }
+
+.p h3 { font-size: 1.06rem; font-weight: 600; line-height: 1.28; text-wrap: balance; }
+.p h3 a { text-decoration: none; }
+.p h3 a:hover { text-decoration: underline; text-decoration-color: var(--acento); text-underline-offset: 3px; }
+.p h3 a:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 2px; }
+
+.origen {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .77rem; color: var(--texto-3); margin-top: -.2rem;
+}
+.origen .punto { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.origen.completo .punto { background: var(--verde); }
+.origen.autor .punto { background: var(--teal); }
+
+.p .res { margin: 0; color: var(--texto-2); font-size: .92rem; }
+
+.campo { border-left: 2px solid var(--linea); padding-left: .7rem; }
+.campo .et { display: block; font-size: .73rem; font-weight: 700; color: var(--linea); }
+.campo .tx { font-size: .875rem; color: var(--texto-2); }
+.campo.importa { --linea: var(--magenta); }
+.campo.dato    { --linea: var(--verde); }
+.campo.aplicar { --linea: var(--ambar); }
+
+.p-pie {
+  display: grid; grid-template-columns: 1fr; gap: .5rem;
+  margin-top: auto; padding-top: .8rem; border-top: 1px solid var(--borde);
+}
+.p-pie.dos { grid-template-columns: 1fr 1fr; }
+
+.bt {
+  font: inherit; font-size: .83rem; font-weight: 700;
+  background: transparent; border: 1px solid var(--borde-vivo);
+  color: var(--texto-2); padding: .38rem .7rem; border-radius: 9px;
+  cursor: pointer; transition: all .15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+}
+.bt:hover { border-color: var(--acento); color: var(--texto); }
+.bt:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.bt.si { background: var(--acento); border-color: var(--acento); color: var(--fondo); }
+.bt[hidden] { display: none; }
+
+.consulta[hidden] { display: none; }
+.consulta { margin-top: .75rem; }
+.consulta form { display: flex; gap: .4rem; }
+.consulta input {
+  flex: 1; min-width: 0; font: inherit; font-size: .86rem;
+  background: var(--fondo); border: 1px solid var(--borde-vivo);
+  color: var(--texto); padding: .4rem .6rem; border-radius: 9px;
+}
+.consulta input:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+.consulta input::placeholder { color: var(--texto-3); }
+.consulta .env {
+  font: inherit; font-size: .81rem; font-weight: 700; cursor: pointer;
+  background: var(--acento); border: none; color: var(--fondo);
+  padding: .4rem .8rem; border-radius: 9px;
+}
+.sugerencias { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .4rem; }
+.sugerencias button {
+  font: inherit; font-size: .74rem; background: transparent;
+  border: 1px dashed var(--borde-vivo); color: var(--texto-3);
+  padding: .16rem .48rem; border-radius: 999px; cursor: pointer;
+}
+.sugerencias button:hover { border-style: solid; border-color: var(--acento); color: var(--texto-2); }
+.rta {
+  margin-top: .55rem; font-size: .88rem; color: var(--texto-2);
+  background: var(--fondo); border-radius: 9px; padding: .6rem .7rem;
+  border-left: 2px solid var(--acento); white-space: pre-wrap;
+}
+
+/* ── Conexiones, ahora también en carril ───────────────────────────── */
+
+.cx {
+  flex: 0 0 480px; scroll-snap-align: start;
+  border: 1px solid var(--borde-vivo); border-left: 4px solid var(--ambar);
+  border-radius: 14px;
+  background: linear-gradient(100deg, rgba(245,166,35,.09), transparent 60%);
+  padding: 1.2rem 1.35rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.cx .tipo { font-size: .77rem; font-weight: 700; color: var(--ambar); }
+.cx h3 { font-size: 1.1rem; font-weight: 600; }
+.cx .dice { color: var(--texto-2); margin: 0; font-size: .92rem; }
+.cx ul { margin: auto 0 0; padding-left: 1.05rem; }
+.cx li { color: var(--texto-3); font-size: .87rem; }
+.cx li b { color: var(--texto-2); font-weight: 500; }
+
+/* ── Rapiditas ─────────────────────────────────────────────────────── */
+
+.rap {
+  flex: 0 0 320px; scroll-snap-align: start;
+  background: var(--pieza); border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--borde);
+  padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .4rem;
+}
+.rap .fu { font-size: .77rem; color: var(--naranja); font-weight: 700; }
+.rap h4 { font-size: .96rem; font-weight: 600; line-height: 1.3; }
+.rap h4 a { text-decoration: none; }
+.rap h4 a:hover { text-decoration: underline; }
+.rap .pq { font-size: .85rem; color: var(--texto-2); margin: 0; }
+.rap .mot { font-size: .74rem; color: var(--texto-3); margin-top: auto; padding-top: .4rem; }
+
+/* ── Cursos y vacíos ───────────────────────────────────────────────── */
+
+.curso {
+  display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;
+  padding: .8rem 0; border-bottom: 1px solid var(--borde);
+}
+.curso .cu { font-family: Outfit, sans-serif; font-weight: 600; }
+.curso .fe { color: var(--lima); font-size: .85rem; font-weight: 700; }
+.curso .pr { color: var(--texto-3); font-size: .85rem; }
+
+.vacio {
+  border: 1px dashed var(--borde-vivo); border-radius: 14px;
+  padding: 1.4rem; color: var(--texto-3); font-size: .93rem;
+}
+.vacio b { color: var(--texto-2); display: block; margin-bottom: .2rem; }
+
+.completo-todo {
+  border: 1px solid var(--verde); border-radius: 14px;
+  background: rgba(0,229,160,.07); padding: 1.5rem;
+  color: var(--texto-2); font-size: .95rem;
+}
+.completo-todo b { color: var(--verde); display: block; font-size: 1.1rem; margin-bottom: .25rem; font-family: Outfit, sans-serif; }
+
+@media (max-width: 560px) {
+  .p  { flex-basis: 86vw; }
+  .cx { flex-basis: 88vw; }
+  .rap{ flex-basis: 82vw; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, .carril { transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* Aviso de carga fallida. Vive acá y no en el script para que se vea como el
+   resto del tablero, aunque no debería aparecer nunca. */
+.aviso {
+  margin: 3rem auto; max-width: 34rem; padding: 1.4rem 1.6rem;
+  border: 1px solid var(--borde-vivo); border-left: 3px solid var(--ambar);
+  border-radius: .8rem; background: var(--pieza); color: var(--texto);
+  font-family: Karla, system-ui, sans-serif; font-size: .95rem; line-height: 1.6;
+}
+.aviso strong { color: var(--ambar); }
+.aviso p { margin: .65rem 0 0; color: var(--texto-2); }
+</style>
+</head>
+
+<body>
+<div class="envoltorio">
+  <header class="cabecera">
+    <div class="marca">
+      <h1><span class="n">News</span> <span class="f">Feed</span></h1>
+      <div class="fecha" id="fecha"></div>
+    </div>
+    <div class="avance">
+      <div class="avance-fila">
+        <span class="n" id="cuenta"></span>
+        <span class="r" id="etiqueta"></span>
+      </div>
+      <div class="tira" id="tira"></div>
+      <button type="button" class="ver-encajadas" id="verEncajadas" hidden></button>
+    </div>
+  </header>
+
+  <section id="conexiones"></section>
+  <div id="fin" class="completo-todo" hidden>
+    <b>Rompecabezas completo</b>
+    Encajaste todas las piezas de esta tanda. Tocá «ver las encajadas» arriba
+    si querés volver sobre alguna.
+  </div>
+  <main id="feed"></main>
+  <section id="rapiditas"></section>
+  <section id="cursos"></section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── De donde salen los datos ─────────────────────────────────────
+     El tablero no trae los datos adentro: los pide a feed.json, que el
+     pipeline reescribe cada dos dias. Asi la pagina no se toca mas.
+
+     cache no-store evita que el navegador siga mostrando la tanda
+     anterior despues de una corrida nueva.                              */
+
+  fetch("feed.json", { cache: "no-store" })
+    .then(function (r) {
+      if (!r.ok) throw new Error("el servidor contestó " + r.status + " al pedir feed.json");
+      return r.json();
+    })
+    .then(dibujar)
+    .catch(fallar);
+
+  function fallar(error) {
+    /* Nada de pantalla en blanco: se dice que fallo y por que (regla 4). */
+    var caja = document.createElement("div");
+    caja.setAttribute("role", "alert");
+    caja.className = "aviso";
+    var titulo = document.createElement("strong");
+    titulo.textContent = "No se pudo cargar el feed.";
+    var detalle = document.createElement("p");
+    detalle.textContent = location.protocol === "file:"
+      ? "La página se abrió como archivo suelto, y así el navegador bloquea la "
+        + "lectura de feed.json. Levantá un servidor desde esta carpeta con "
+        + "python3 -m http.server 8000 y entrá a http://localhost:8000."
+      : String(error && error.message ? error.message : error);
+    caja.appendChild(titulo);
+    caja.appendChild(detalle);
+    document.body.insertBefore(caja, document.body.firstChild);
+  }
+
+  function dibujar(d) {
+    var CLAVE = "newsfeed.leidas";
+
+    var TINTE = {
+      "AI & Tech": "var(--verde)",
+      "Noticias": "var(--magenta)",
+      "Mujeres y emprendimiento": "var(--ambar)"
+    };
+    var HEX = {
+      "AI & Tech": "#00E5A0", "Noticias": "#FF3D9A", "Mujeres y emprendimiento": "#F5A623"
+    };
+
+    var MOTIVO = {
+      bloqueado_por_el_sitio: "el sitio no dejó leer el artículo",
+      paywall: "hay que pagar para leerlo",
+      sin_texto_extraible: "la página no traía texto",
+      rate_limit_persistente: "el sitio pidió bajar el ritmo",
+      timeout: "el sitio no respondió a tiempo"
+    };
+
+    var MES = ["enero","febrero","marzo","abril","mayo","junio","julio",
+               "agosto","setiembre","octubre","noviembre","diciembre"];
+
+    function fecha(iso) {
+      if (!iso) return "sin fecha";
+      var p = iso.split("-");
+      return parseInt(p[2], 10) + " de " + MES[parseInt(p[1], 10) - 1];
+    }
+
+    function leer() {
+      try { return JSON.parse(localStorage.getItem(CLAVE)) || {}; } catch (e) { return {}; }
+    }
+    function guardar(v) {
+      try { localStorage.setItem(CLAVE, JSON.stringify(v)); } catch (e) {}
+    }
+    var leidas = leer();
+
+    function el(t, c, x) {
+      var n = document.createElement(t);
+      if (c) n.className = c;
+      if (x != null) n.textContent = x;
+      return n;
+    }
+
+    function icono(dd, tam) {
+      var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      s.setAttribute("viewBox", "0 0 24 24");
+      s.setAttribute("width", tam || 15); s.setAttribute("height", tam || 15);
+      s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor");
+      s.setAttribute("stroke-width", "2.2");
+      s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+      s.setAttribute("aria-hidden", "true");
+      var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", dd);
+      s.appendChild(p);
+      return s;
+    }
+    var CHECK = "M20 6L9 17l-5-5";
+    var PIEZA = "M4 5h5V4a2 2 0 114 0v1h5v5h1a2 2 0 110 4h-1v5H4z";
+    var IZQ = "M15 18l-6-6 6-6", DER = "M9 18l6-6-6-6";
+
+    var lento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // publicar.py ya deja fuera del feed las piezas duplicadas; las que
+    // llegan son las principales, con la lista de quien mas la cubrio.
+    var unicos = d.items;
+    var principales = unicos.filter(function (i) { return i.nivel !== "secundario"; });
+    var rapiditas = unicos.filter(function (i) { return i.nivel === "secundario"; });
+    var porId = {};
+    unicos.forEach(function (i) { porId[i.id] = i; });
+
+    /* ── Carril con flechas: se usa en las tres secciones ────────────── */
+
+    function carril(clase, acento) {
+      var c = el("div", "carril " + clase);
+      c.setAttribute("tabindex", "0");
+      c.setAttribute("role", "region");
+
+      var izq = el("button", "flecha"), der = el("button", "flecha");
+      [izq, der].forEach(function (b) { b.type = "button"; });
+      izq.appendChild(icono(IZQ, 16));
+      der.appendChild(icono(DER, 16));
+      izq.setAttribute("aria-label", "Ver anteriores");
+      der.setAttribute("aria-label", "Ver siguientes");
+
+      var caja = el("div", "flechas");
+      caja.style.setProperty("--acento", acento);
+      caja.appendChild(izq);
+      caja.appendChild(der);
+
+      function paso() { return Math.max(240, c.clientWidth * 0.72); }
+      izq.addEventListener("click", function () { c.scrollBy({ left: -paso() }); });
+      der.addEventListener("click", function () { c.scrollBy({ left: paso() }); });
+
+      function estado() {
+        var sobra = c.scrollWidth - c.clientWidth;
+        izq.disabled = c.scrollLeft < 8;
+        der.disabled = sobra < 8 || c.scrollLeft >= sobra - 8;
+        caja.hidden = sobra < 8;
+      }
+      c.addEventListener("scroll", estado);
+      window.addEventListener("resize", estado);
+      c.actualizar = estado;
+      setTimeout(estado, 0);
+
+      return { carril: c, flechas: caja, estado: estado };
+    }
+
+    var carriles = [];
+
+    /* ── Avance ──────────────────────────────────────────────────────── */
+
+    var verTodo = false;
+    var btVer = document.getElementById("verEncajadas");
+
+    function avance() {
+      var n = principales.filter(function (i) { return leidas[i.id]; }).length;
+
+      var c = document.getElementById("cuenta");
+      c.textContent = "";
+      c.appendChild(el("b", null, String(n)));
+      c.appendChild(document.createTextNode(" de " + principales.length));
+
+      document.getElementById("etiqueta").textContent =
+        n === 0 ? "piezas por encajar"
+        : n === principales.length ? "¡rompecabezas completo!"
+        : "piezas encajadas";
+
+      var tira = document.getElementById("tira");
+      tira.textContent = "";
+      principales.forEach(function (i) {
+        var casilla = el("i");
+        if (leidas[i.id]) casilla.style.background = HEX[i.categoria] || "#00E5A0";
+        casilla.title = i.titulo;
+        tira.appendChild(casilla);
+      });
+
+      btVer.hidden = n === 0;
+      btVer.textContent = verTodo
+        ? "ocultar las encajadas"
+        : "ver las " + n + (n === 1 ? " encajada" : " encajadas");
+
+      carriles.forEach(function (c) { c.estado(); });
+      revisarVacios();
+    }
+
+    btVer.addEventListener("click", function () {
+      verTodo = !verTodo;
+      document.body.classList.toggle("ver-todo", verTodo);
+      btVer.classList.toggle("si", verTodo);
+      avance();
+    });
+
+    /* Una tira sin piezas pendientes no tiene por qué seguir ocupando
+       lugar. Las tiras de tema desaparecen enteras —si quedaran, un
+       tablero terminado sería una fila de cinco carteles diciendo lo
+       mismo— y solo al final, cuando ya no queda nada en ninguna, la
+       página dice que el rompecabezas está completo. */
+    function revisarVacios() {
+      var pendientesTotales = 0;
+
+      document.querySelectorAll("[data-seccion]").forEach(function (sec) {
+        var quedan = [].slice.call(sec.querySelectorAll(".p")).filter(function (p) {
+          return !p.classList.contains("leida");
+        }).length;
+        pendientesTotales += quedan;
+        sec.hidden = quedan === 0 && !verTodo;
+      });
+
+      /* El título de la categoría se va con sus tiras: sin ellas no
+         encabeza nada. */
+      document.querySelectorAll("[data-categoria]").forEach(function (cab) {
+        var vivas = [].slice.call(
+          document.querySelectorAll('[data-seccion^="' + cab.dataset.categoria + '"]')
+        ).filter(function (s) { return !s.hidden; }).length;
+        cab.hidden = vivas === 0;
+      });
+
+      var fin = document.getElementById("fin");
+      fin.hidden = !(pendientesTotales === 0 && !verTodo && principales.length > 0);
+    }
+
+    /* ── Preguntar (solo dentro de claude.ai) ────────────────────────── */
+
+    /* La misma página se publica como artifact y como sitio estático en
+       GitHub Pages, donde `claude` no existe. Sin esta comprobación el
+       script se corta y la página queda en blanco. */
+    var preguntar = null;
+    if (typeof claude !== "undefined" && claude && typeof claude.use === "function") {
+      claude.use("sample").then(function (s) {
+        preguntar = s;
+        if (!s) return;
+        document.querySelectorAll(".bt.preguntar").forEach(function (b) { b.hidden = false; });
+        document.querySelectorAll(".p-pie").forEach(function (p) { p.classList.add("dos"); });
+      }).catch(function () {});
+    }
+
+    function caja(item) {
+      var c = el("div", "consulta");
+      c.hidden = true;
+
+      var form = document.createElement("form");
+      var campo = document.createElement("input");
+      campo.type = "text";
+      campo.placeholder = "Preguntar sobre esta noticia";
+      campo.setAttribute("aria-label", "Preguntar sobre " + item.titulo);
+      var env = el("button", "env", "Ir");
+      env.type = "submit";
+      form.appendChild(campo); form.appendChild(env);
+      c.appendChild(form);
+
+      var sug = el("div", "sugerencias");
+      ["¿Qué es esta empresa?", "¿Por dónde empiezo?", "Explicámelo simple"].forEach(function (t) {
+        var b = el("button", null, t);
+        b.type = "button";
+        b.addEventListener("click", function () { campo.value = t; enviar(t); });
+        sug.appendChild(b);
+      });
+      c.appendChild(sug);
+
+      var rta = el("div", "rta");
+      rta.hidden = true;
+      c.appendChild(rta);
+
+      function enviar(texto) {
+        if (!preguntar || !texto.trim()) return;
+        rta.hidden = false; rta.textContent = "Pensando…"; env.disabled = true;
+        preguntar(
+          "Sos un ayudante dentro de un panel de noticias de tecnología. " +
+          "Respondé en español, en 3 frases como mucho, claro y sin relleno. " +
+          "Si no sabés algo, decilo.\n\nNOTICIA:\n" + item.titulo + "\n" + item.resumen +
+          (item.por_que_importa ? "\nPor qué importa: " + item.por_que_importa : "") +
+          (item.dato_concreto ? "\nDato: " + item.dato_concreto : "") +
+          "\n\nPREGUNTA: " + texto,
+          { onText: function (e) { rta.textContent = e.text; } }
+        ).then(function (r) { rta.textContent = r.text; env.disabled = false; })
+         .catch(function (err) {
+           rta.textContent = err && err.code === "rate_limited"
+             ? "Se llegó al límite de preguntas por ahora. Probá en un rato."
+             : "No se pudo responder esta vez.";
+           env.disabled = false;
+         });
+      }
+      form.addEventListener("submit", function (ev) { ev.preventDefault(); enviar(campo.value); });
+      return c;
+    }
+
+    /* ── Una pieza ───────────────────────────────────────────────────── */
+
+    function pieza(item) {
+      var art = el("article", "p");
+      art.id = "p-" + item.id;
+      art.style.setProperty("--acento", TINTE[item.categoria] || "var(--verde)");
+      if (leidas[item.id]) art.classList.add("leida");
+
+      var meta = el("div", "p-meta");
+      meta.appendChild(el("span", "fu", item.fuente));
+      meta.appendChild(el("span", null, "·"));
+      meta.appendChild(el("span", null, fecha(item.fecha_original)));
+      if (item.duplicado_de && item.duplicado_de.length) {
+        meta.appendChild(el("span", null, "·"));
+        meta.appendChild(el("span", null, "también en otra fuente"));
+      }
+      art.appendChild(meta);
+
+      var h = el("h3");
+      if (item.url_original) {
+        var a = el("a", null, item.titulo);
+        a.href = item.url_original; a.target = "_blank"; a.rel = "noopener noreferrer";
+        h.appendChild(a);
+      } else { h.textContent = item.titulo; }
+      art.appendChild(h);
+
+      var esAutor = item.procedencia_resumen === "correo_de_autor";
+      var org = el("span", "origen " + (esAutor ? "autor" : "completo"));
+      org.appendChild(el("span", "punto"));
+      org.appendChild(document.createTextNode(
+        esAutor ? "texto completo, de la fuente" : "leído del artículo original"));
+      art.appendChild(org);
+
+      art.appendChild(el("p", "res", item.resumen));
+
+      [["importa", "Por qué importa", item.por_que_importa],
+       ["dato", "El dato", item.dato_concreto],
+       ["aplicar", "Por dónde se empieza", item.como_aplicarlo]
+      ].forEach(function (par) {
+        if (!par[2]) return;
+        var c = el("div", "campo " + par[0]);
+        c.appendChild(el("span", "et", par[1]));
+        c.appendChild(el("span", "tx", par[2]));
+        art.appendChild(c);
+      });
+
+      var pie = el("div", "p-pie");
+
+      var bLeida = el("button", "bt");
+      bLeida.type = "button";
+      function pintar() {
+        var on = !!leidas[item.id];
+        bLeida.textContent = "";
+        bLeida.appendChild(icono(on ? CHECK : PIEZA));
+        bLeida.appendChild(document.createTextNode(on ? "encajada" : "encajar pieza"));
+        bLeida.classList.toggle("si", on);
+        bLeida.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+      bLeida.addEventListener("click", function () {
+        var encajando = !leidas[item.id];
+        if (encajando) leidas[item.id] = true; else delete leidas[item.id];
+        guardar(leidas);
+        pintar();
+
+        if (encajando && !verTodo && !lento) {
+          // Se desvanece antes de salir de la fila, para que se vea que la
+          // pieza se fue y no que el feed pegó un salto.
+          art.classList.add("saliendo");
+          setTimeout(function () {
+            art.classList.remove("saliendo");
+            art.classList.add("leida");
+            avance();
+          }, 260);
+        } else {
+          art.classList.toggle("leida", encajando);
+          avance();
+        }
+      });
+      pintar();
+      pie.appendChild(bLeida);
+
+      var c = caja(item);
+      var bPreg = el("button", "bt preguntar", "preguntar");
+      bPreg.type = "button";
+      bPreg.hidden = true;
+      bPreg.setAttribute("aria-expanded", "false");
+      bPreg.addEventListener("click", function () {
+        c.hidden = !c.hidden;
+        bPreg.setAttribute("aria-expanded", c.hidden ? "false" : "true");
+        bPreg.classList.toggle("si", !c.hidden);
+        if (!c.hidden) { var i = c.querySelector("input"); if (i) i.focus(); }
+      });
+      pie.appendChild(bPreg);
+
+      art.appendChild(pie);
+      art.appendChild(c);
+      return art;
+    }
+
+    /* ── Conexiones, en carril ───────────────────────────────────────── */
+
+    var NOMBRE = {
+      continuacion: "Una sigue a la otra",
+      tension: "Se contradicen",
+      patron: "Todas apuntan a lo mismo",
+      causa_efecto: "Una explica la otra"
+    };
+
+    if (d.hilos.length) {
+      var zc = document.getElementById("conexiones");
+      var f = el("div", "franja");
+      f.style.setProperty("--acento", "var(--ambar)");
+      f.appendChild(el("h2", null, "Piezas que encajan"));
+      f.appendChild(el("span", "cuenta",
+        d.hilos.length === 1 ? "1 conexión" : d.hilos.length + " conexiones"));
+      f.appendChild(el("span", "barra"));
+
+      var cc = carril("sueltas", "var(--ambar)");
+      cc.carril.setAttribute("aria-label", "Conexiones entre noticias");
+      f.appendChild(cc.flechas);
+      zc.appendChild(f);
+
+      d.hilos.forEach(function (h) {
+        var box = el("div", "cx");
+        box.appendChild(el("span", "tipo", NOMBRE[h.tipo] || h.tipo));
+        box.appendChild(el("h3", null, h.titulo));
+        box.appendChild(el("p", "dice", h.que_dice_el_conjunto));
+        var ul = document.createElement("ul");
+        h.ids.forEach(function (id) {
+          var it = porId[id];
+          if (!it) return;
+          var li = document.createElement("li");
+          li.appendChild(el("b", null, it.titulo));
+          li.appendChild(document.createTextNode(" — " + it.fuente));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+        cc.carril.appendChild(box);
+      });
+      zc.appendChild(cc.carril);
+      carriles.push(cc);
+    }
+
+    /* ── Feed: una tira por tema ─────────────────────────────────────── */
+
+    /* Los temas parten las categorías por dentro. Sin ellos, como la
+       categoría viene de la fuente y casi todas las fuentes son de
+       tecnología, quedaba una sola pila de 64 piezas donde convivían un
+       fallo judicial, un ensayo y el lanzamiento de una computadora. */
+    var TEMAS = {
+      regulacion: "Regulación y cumplimiento",
+      agentes: "Agentes y automatización",
+      modelos: "Modelos y capacidades",
+      herramientas: "Herramientas",
+      seguridad: "Seguridad y riesgos",
+      negocio: "Negocio e industria",
+      trabajo: "Trabajo y personas",
+      otro: "Otros"
+    };
+    /* Orden fijo, y elegido: primero lo que cambia las reglas o el trabajo
+       de alguien, al final lo que solo informa. Que sea fijo importa —
+       si cambiara por volumen, el tablero se reordenaría en cada corrida
+       y habría que releerlo entero cada vez. */
+    var ORDEN = ["regulacion", "agentes", "trabajo", "herramientas",
+                 "modelos", "seguridad", "negocio", "otro"];
+
+    var UMBRAL_TEMAS = 8;
+
+    var feed = document.getElementById("feed");
+    var cats = {};
+    principales.forEach(function (i) { (cats[i.categoria] = cats[i.categoria] || []).push(i); });
+
+    function tira(contenedor, titulo, subtitulo, items, color, etiquetaAria, esTema) {
+      var sec = el("section");
+      sec.setAttribute("data-seccion", etiquetaAria);
+
+      var f = el("div", "franja" + (esTema ? " tema" : ""));
+      f.style.setProperty("--acento", color);
+      var h2 = el("h2", null, titulo);
+      h2.style.color = color;
+      f.appendChild(h2);
+      f.appendChild(el("span", "cuenta", subtitulo));
+      f.appendChild(el("span", "barra"));
+
+      var c = carril("piezas", color);
+      c.carril.setAttribute("aria-label", etiquetaAria);
+      f.appendChild(c.flechas);
+      sec.appendChild(f);
+
+      items.forEach(function (i) { c.carril.appendChild(pieza(i)); });
+      sec.appendChild(c.carril);
+      contenedor.appendChild(sec);
+      carriles.push(c);
+    }
+
+    Object.keys(cats).sort().forEach(function (nombre) {
+      var items = cats[nombre];
+      var color = TINTE[nombre] || "var(--verde)";
+
+      /* Una categoría chica no necesita partirse: cuatro tiras de dos
+         piezas serían más ruido que orden. */
+      if (items.length <= UMBRAL_TEMAS) {
+        tira(feed, nombre, items.length + (items.length === 1 ? " pieza" : " piezas"),
+             items, color, nombre);
+        return;
+      }
+
+      var titulo = el("div", "franja");
+      titulo.setAttribute("data-categoria", nombre);
+      titulo.style.setProperty("--acento", color);
+      var h = el("h2", null, nombre);
+      h.style.color = color;
+      titulo.appendChild(h);
+      titulo.appendChild(el("span", "cuenta", items.length + " piezas, por tema"));
+      titulo.appendChild(el("span", "barra"));
+      feed.appendChild(titulo);
+
+      var porTema = {};
+      items.forEach(function (i) {
+        var t = TEMAS[i.tema] ? i.tema : "otro";
+        (porTema[t] = porTema[t] || []).push(i);
+      });
+
+      ORDEN.forEach(function (t) {
+        if (!porTema[t]) return;
+        tira(feed, TEMAS[t],
+             porTema[t].length + (porTema[t].length === 1 ? " pieza" : " piezas"),
+             porTema[t], color, nombre + " · " + TEMAS[t], true);
+      });
+    });
+
+    /* ── Rapiditas ───────────────────────────────────────────────────── */
+
+    if (rapiditas.length) {
+      var zr = document.getElementById("rapiditas");
+      var fr = el("div", "franja");
+      fr.style.setProperty("--acento", "var(--naranja)");
+      var h2r = el("h2", null, "Rapiditas");
+      h2r.style.color = "var(--naranja)";
+      fr.appendChild(h2r);
+      fr.appendChild(el("span", "cuenta",
+        rapiditas.length + " · no se pudo leer el artículo original"));
+      fr.appendChild(el("span", "barra"));
+
+      var cr = carril("sueltas", "var(--naranja)");
+      cr.carril.setAttribute("aria-label", "Rapiditas");
+      fr.appendChild(cr.flechas);
+      zr.appendChild(fr);
+
+      rapiditas.forEach(function (i) {
+        var t = el("div", "rap");
+        t.appendChild(el("span", "fu", i.fuente));
+        var h4 = document.createElement("h4");
+        if (i.url_original) {
+          var a = el("a", null, i.titulo);
+          a.href = i.url_original; a.target = "_blank"; a.rel = "noopener noreferrer";
+          h4.appendChild(a);
+        } else { h4.textContent = i.titulo; }
+        t.appendChild(h4);
+        if (i.por_que_importa) t.appendChild(el("p", "pq", i.por_que_importa));
+        t.appendChild(el("div", "mot", MOTIVO[i.motivo_fallback] || i.motivo_fallback || ""));
+        cr.carril.appendChild(t);
+      });
+      zr.appendChild(cr.carril);
+      carriles.push(cr);
+    }
+
+    /* ── Cursos ──────────────────────────────────────────────────────── */
+
+    var zcu = document.getElementById("cursos");
+    var fcu = el("div", "franja");
+    fcu.style.setProperty("--acento", "var(--lima)");
+    var h2c = el("h2", null, "Arranca pronto");
+    h2c.style.color = "var(--lima)";
+    fcu.appendChild(h2c);
+    fcu.appendChild(el("span", "barra"));
+    zcu.appendChild(fcu);
+
+    /* Un curso que ya empezó no arranca pronto. Se compara contra HOY y no
+       contra la fecha de la corrida: el feed se genera una vez y se mira
+       durante días. Los que no traen fecha se quedan — no sabemos si
+       pasaron, y descartarlos sería inventar. */
+    var hoy = new Date().toISOString().slice(0, 10);
+    var vigentes = d.cursos.filter(function (c) {
+      return !c.fecha_evento || c.fecha_evento >= hoy;
+    });
+
+    if (!vigentes.length) {
+      var vc = el("div", "vacio");
+      vc.appendChild(el("b", null, "Nada por arrancar"));
+      vc.appendChild(document.createTextNode(
+        "No hay cursos ni eventos con fecha próxima en esta tanda."));
+      zcu.appendChild(vc);
+    }
+
+    vigentes.forEach(function (c) {
+      var fila = el("div", "curso");
+      var t = el("span", "cu");
+      if (c.url) {
+        var a = el("a", null, c.titulo);
+        a.href = c.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+        t.appendChild(a);
+      } else { t.textContent = c.titulo; }
+      fila.appendChild(t);
+      fila.appendChild(el("span", "fe", c.fecha_evento ? fecha(c.fecha_evento) : "sin fecha"));
+      fila.appendChild(el("span", "pr",
+        c.gratis === true ? "gratis" : c.gratis === false ? "de pago" : "no dice el precio"));
+      fila.appendChild(el("span", "pr", c.fuente));
+      zcu.appendChild(fila);
+    });
+
+    /* ── Fecha ───────────────────────────────────────────────────────── */
+
+    var dias = unicos.map(function (i) { return i.fecha_original; }).filter(Boolean).sort();
+    document.getElementById("fecha").textContent = dias.length
+      ? (dias[0] === dias[dias.length - 1]
+          ? fecha(dias[0])
+          : "Del " + fecha(dias[0]) + " al " + fecha(dias[dias.length - 1]))
+      : "";
+
+    avance();
+  }
+})();
+</script>
+</body>
+</html>
