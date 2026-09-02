@@ -71,7 +71,7 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           PUZZLE_SALT: ${{ secrets.PUZZLE_SALT }}
           PUZZLE_IDENTIFICADORES: ${{ secrets.PUZZLE_IDENTIFICADORES }}
-        run: python pipeline/main.py --dias 4 --sin-llm
+        run: python pipeline/main.py --dias 4 --publicar --marcar --simular
 
       - name: Revisar privacidad
         env:
