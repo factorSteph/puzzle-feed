@@ -14,6 +14,7 @@ Uso:
     python pipeline/main.py --por-correo 12      # más noticias por correo
     python pipeline/main.py --sin-llm            # solo ingesta, sin gastar modelo
     python pipeline/main.py --publicar --marcar  # escribir el feed y ordenar Gmail
+    python pipeline/main.py --desde-feed         # extensiones sobre el feed ya publicado
 
 ## Sobre los correos que fallan
 
@@ -27,6 +28,7 @@ reintenta para siempre.
 import argparse
 import datetime
 import importlib.util
+import json
 import pathlib
 import imaplib
 import sys
@@ -37,7 +39,14 @@ import articulos
 import etiquetas
 import gemini
 import publicar
-from config import ErrorDeConfiguracion, cargar_credenciales, cargar_fuentes
+from config import (
+    ErrorDeConfiguracion,
+    cargar_credenciales,
+    cargar_fuentes,
+    cargar_identificadores,
+    cargar_sal,
+    en_ci,
+)
 from cuerpos import extraer_candidatos, partes, traer_cuerpos
 from ingesta import (
     buscar_sin_procesar,
@@ -61,9 +70,9 @@ def quitar_copias(correos):
 
     Dos causas observadas en datos reales:
 
-    1. Gmail ignora los puntos en las direcciones: `nombre@gmail.com` y
-       `nom.bre@gmail.com` son el mismo buzón. Algunos newsletters tienen al
-       suscriptor apuntado con las dos grafías y mandan una copia por cada una.
+    1. Gmail ignora los puntos en la parte local de la dirección: `nombre` y
+       `nom.bre` son el mismo buzón. Algunos newsletters tienen al suscriptor
+       apuntado con las dos grafías y mandan una copia por cada una.
     2. Otros remitentes sencillamente reenvían el mismo correo varias veces.
 
     En ambos casos, sin esto la misma pieza aparece repetida en el feed.
@@ -469,6 +478,12 @@ def reportar_ingesta(grupos, fuentes, cursos, descartados, detalle=False):
         cuantos = sum(len(cs) for cs in grupos[clave].values())
         print(f"  {etiqueta:<14} {cuantos:>4} correo(s)  de {len(grupos[clave])} remitente(s)")
 
+    # El detalle nombra remitente por remitente, y esa lista describe un buzón,
+    # no este proyecto. Se arma únicamente donde la salida tiene un solo lector.
+    if detalle and en_ci():
+        print("\n  (reporte detallado disponible solo en corridas locales)")
+        return
+
     if not detalle:
         print("\n  (corré con --detalle para ver remitente por remitente)")
         return
@@ -650,6 +665,13 @@ def main():
         help="correr las extensiones locales, si hay alguna",
     )
     salidas.add_argument(
+        "--desde-feed", nargs="?", const=RUTA_FEED, metavar="RUTA",
+        help=(
+            f"correr las extensiones locales sobre un feed ya publicado "
+            f"(default {RUTA_FEED}), sin pasar por Gmail ni volver a resumir"
+        ),
+    )
+    salidas.add_argument(
         "--marcar", action="store_true",
         help="etiquetar en Gmail, marcar leídos y archivar los correos procesados",
     )
@@ -659,12 +681,15 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.simular and not (args.marcar or args.local):
+    if args.simular and not (args.marcar or args.local or args.desde_feed):
         print(
             "--simular no hace nada por su cuenta: acompañalo de --marcar o --local.",
             file=sys.stderr,
         )
         return 1
+
+    if args.desde_feed:
+        return correr_sobre_feed(args)
 
     try:
         usuario, password = cargar_credenciales()
@@ -752,8 +777,20 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
     if args.publicar:
         titulo("FEED PÚBLICO")
         try:
+            sal = cargar_sal()
+        except ErrorDeConfiguracion as error:
+            print(f"\n  ABORTADO: {error}\n", file=sys.stderr)
+            return 1
+
+        identificadores = cargar_identificadores()
+        # El conteo y no la lista: este mensaje también sale en corridas
+        # desatendidas. Cero sería una verificación que no verifica, y eso se
+        # dice en voz alta en vez de pasar de largo.
+        print(f"  verificación de texto: {len(identificadores)} identificador(es) activo(s)")
+
+        try:
             destino, cuantos = publicar.escribir(
-                args.publicar, items, cursos, hilos, fecha_feed
+                args.publicar, items, cursos, hilos, fecha_feed, sal, identificadores
             )
             print(f"  {cuantos} item(s) en {destino}")
         except publicar.FugaDePrivacidad as error:
@@ -767,6 +804,55 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
     if args.marcar:
         return marcar_en_gmail(args, usuario, password, correos, items, cursos)
 
+    return 0
+
+
+def correr_sobre_feed(args):
+    """Corre las extensiones locales sobre un feed que ya se publicó.
+
+    La memoria del pipeline es la etiqueta en Gmail: cuando una corrida marca
+    los correos que procesó, la siguiente ya no los ve. Eso es lo que evita
+    repetir trabajo, pero también significa que una extensión atada a la
+    corrida solo podría usarse en el instante en que la corrida ocurre —y si
+    quien la corre es un cron, ese instante nunca coincide con el momento en
+    que a una le sirve.
+
+    Leyendo el feed ya escrito, se pide cuando haga falta. No abre Gmail, no
+    vuelve a elegir ni a resumir: eso está hecho y guardado.
+    """
+    ruta = pathlib.Path(args.desde_feed)
+    if not ruta.exists():
+        print(
+            f"\nNo encuentro un feed en {ruta}.\n"
+            f"Publicá uno con --publicar, o pasale la ruta a --desde-feed.\n",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        feed = json.loads(ruta.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as error:
+        print(f"\nNo pude leer {ruta}: {type(error).__name__}: {error}\n", file=sys.stderr)
+        return 1
+
+    items = feed.get("items") or []
+    hilos = feed.get("hilos") or []
+    if not items:
+        print(f"\nEl feed {ruta} no tiene piezas.\n", file=sys.stderr)
+        return 1
+
+    try:
+        usuario, password = cargar_credenciales()
+        cliente = gemini.Cliente()
+    except ErrorDeConfiguracion as error:
+        print(f"\nConfiguración incompleta:\n{error}\n", file=sys.stderr)
+        return 1
+
+    fecha_feed = feed.get("generado") or _fecha_del_feed(items)
+    print(f"{len(items)} pieza(s) y {len(hilos)} hilo(s) en {ruta}, del {fecha_feed}.")
+
+    titulo("EXTENSIONES LOCALES" + ("  (simulación)" if args.simular else ""))
+    correr_extensiones(args, usuario, password, items, hilos, fecha_feed, cliente)
     return 0
 
 

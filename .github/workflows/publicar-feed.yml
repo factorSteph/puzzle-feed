@@ -1,0 +1,94 @@
+# Publica el feed cada dos días, sin nadie mirando.
+#
+# El pipeline corre igual en una máquina de desarrollo; esto solo se encarga de
+# que ocurra sin que haya que acordarse. Lo que sí cambia al correr acá es que
+# nadie lee la salida antes de que se publique, y de eso se ocupan las dos
+# revisiones del final: la que el propio pipeline hace antes de escribir el
+# archivo, y `verificar_privacidad.py` antes de commitearlo.
+#
+# Se enciende por etapas. La línea del comando de abajo empieza en la primera y
+# se avanza cuando cada una queda comprobada:
+#
+#   1. --dias 4 --sin-llm                    entra al buzón y reporta, sin escribir
+#   2. --dias 4 --publicar --marcar --simular   escribe el feed; el buzón, solo en plan
+#   3. --dias 4 --publicar --marcar             completo
+
+name: Publicar el feed
+
+on:
+  schedule:
+    # 16:37 UTC, que en Costa Rica son las 10:37 de la mañana. Minuto raro a
+    # propósito: la cola de tareas programadas se congestiona en las horas en
+    # punto, y el disparo llega tarde de media hora a varias.
+    #
+    # Días pares. Cron no sabe decir "cada 48 horas", y esta es la forma más
+    # cercana que no encadena dos corridas seguidas. El precio está en la vuelta
+    # de mes, donde del 30 al 2 pasan tres días: por eso la ventana de búsqueda
+    # es de cuatro días y no de dos, y el buzón absorbe la diferencia.
+    - cron: '37 16 2-30/2 * *'
+
+  # Para poder dispararlo a mano. Sin parámetros: lo que corre es siempre lo
+  # mismo que corre solo.
+  workflow_dispatch:
+
+# Lo único que hace falta es escribir un archivo en el repositorio.
+permissions:
+  contents: write
+
+# Dos corridas simultáneas etiquetarían los mismos correos dos veces.
+concurrency:
+  group: publicar-feed
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    # Una corrida sana tarda unos cinco minutos. Veinte es margen de sobra, y
+    # corta el caso en que una llamada quede colgada esperando para siempre.
+    timeout-minutes: 20
+
+    steps:
+      # Las acciones van fijadas al identificador exacto del commit, no a una
+      # etiqueta de versión. Una etiqueta es un puntero y se puede mover: lo que
+      # corre acá tiene las credenciales del buzón cargadas, así que conviene
+      # que sea exactamente el código que se revisó.
+      - name: Traer el repositorio
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Correr el pipeline
+        env:
+          GMAIL_USUARIO: ${{ secrets.GMAIL_USUARIO }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          PUZZLE_SALT: ${{ secrets.PUZZLE_SALT }}
+          PUZZLE_IDENTIFICADORES: ${{ secrets.PUZZLE_IDENTIFICADORES }}
+        run: python pipeline/main.py --dias 4 --sin-llm
+
+      - name: Revisar privacidad
+        env:
+          GMAIL_USUARIO: ${{ secrets.GMAIL_USUARIO }}
+          PUZZLE_IDENTIFICADORES: ${{ secrets.PUZZLE_IDENTIFICADORES }}
+        run: python verificar_privacidad.py
+
+      - name: Publicar el feed
+        run: |
+          if git diff --quiet -- docs/feed.json; then
+            echo "El feed no cambió: no hay nada que publicar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Solo este archivo, nombrado. Un `git add` que barra la carpeta
+          # entera subiría cualquier cosa que un paso haya dejado escrita.
+          git add docs/feed.json
+          git commit -m "Feed del $(date -u +%Y-%m-%d)"
+          git push

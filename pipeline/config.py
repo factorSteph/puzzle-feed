@@ -61,6 +61,66 @@ def cargar_credenciales():
     return usuario, password.replace(" ", "")
 
 
+def en_ci():
+    """Cierto cuando el pipeline corre en un servidor de integración continua.
+
+    Sirve para que las partes del reporte que solo tienen sentido con alguien
+    mirando la pantalla no se armen en una corrida desatendida.
+    """
+    return bool(os.getenv("GITHUB_ACTIONS") or os.getenv("CI"))
+
+
+def cargar_sal():
+    """Devuelve la sal con la que se derivan los identificadores del feed.
+
+    Tiene que ser la misma en todas las máquinas que publiquen el feed: el
+    tablero guarda el progreso del rompecabezas con esos identificadores, y con
+    otra sal cada pieza vuelve a empezar apagada.
+    """
+    sal = os.getenv("PUZZLE_SALT")
+    if not sal:
+        raise ErrorDeConfiguracion(
+            "Falta PUZZLE_SALT en .env.\n"
+            "  1. Generá una:  python3 -c \"import secrets; print(secrets.token_hex(16))\"\n"
+            "  2. Pegala en .env como PUZZLE_SALT=…\n"
+            "  3. Guardala: cambiarla reinicia el progreso del tablero"
+        )
+    return sal
+
+
+# Un identificador más corto que esto coincide con prosa por accidente, y un
+# falso positivo acá aborta la corrida entera.
+LARGO_MINIMO_DE_IDENTIFICADOR = 4
+
+
+def cargar_identificadores():
+    """Devuelve los textos propios que nunca deben aparecer en el feed público.
+
+    La dirección de correo sale de la configuración que ya existe; el resto
+    —nombre, apellido, cualquier cosa con la que un remitente personalice— se
+    lista en PUZZLE_IDENTIFICADORES, separado por comas. Vive en .env por la
+    misma razón que el resto: enumerar en el repositorio lo que se busca es
+    publicarlo.
+
+    Devolver una lista vacía sería un filtro que no filtra, así que el llamador
+    reporta cuántos quedaron activos.
+    """
+    crudos = list((os.getenv("PUZZLE_IDENTIFICADORES") or "").split(","))
+
+    usuario = os.getenv("GMAIL_USUARIO") or ""
+    if usuario:
+        crudos.append(usuario)
+        crudos.append(usuario.split("@")[0])
+
+    return sorted(
+        {
+            texto.strip()
+            for texto in crudos
+            if len(texto.strip()) >= LARGO_MINIMO_DE_IDENTIFICADOR
+        }
+    )
+
+
 def cargar_fuentes():
     """Lee la configuración y devuelve tres diccionarios indexados por remitente.
 
