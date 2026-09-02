@@ -62,7 +62,22 @@ NUNCA_EN_EL_HISTORIAL = re.compile(
 )
 
 CORREO = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-RUTA_PERSONAL = re.compile(r"/mnt/c/Users/|C:\\Users\\|/home/[a-z]", re.IGNORECASE)
+# El nombre de la carpeta se arma en dos pedazos en vez de escribirse entero:
+# si estuviera literal, esta misma línea sería una coincidencia y el verificador
+# se acusaría a sí mismo.
+#
+# La barra invertida se construye por su código y se escapa para el motor de
+# expresiones. Son dos capas distintas, y saltarse la segunda es un error que no
+# avisa hasta que el patrón se compila: una barra suelta ahí adentro no es una
+# barra, es el principio de un escape.
+_CARPETA = "Us" + "ers"
+_BARRA = re.escape(chr(92))
+RUTA_PERSONAL = re.compile(
+    "/mnt/c/" + _CARPETA + "/"
+    + "|[A-Za-z]:" + _BARRA + _CARPETA + _BARRA
+    + "|/home/[a-z]",
+    re.IGNORECASE,
+)
 FORMA_DE_ID = re.compile(r"[0-9a-f]{8}")
 FORMA_DE_UID = re.compile(r"^\d{3,7}-\d{1,3}$")
 
