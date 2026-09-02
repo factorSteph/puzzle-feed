@@ -320,6 +320,17 @@ def quitar_cursos_repetidos(cursos):
     curso, y se resuelve comparando. Se conserva el primero, que es el que
     tiene el anuncio original.
 
+    Esa comparación sola no alcanzaba. El mismo taller llega anunciado por dos
+    correos que lo titulan distinto —uno en mayúsculas, otro no— y de los que
+    solo uno trae la fecha. Normalizando el título coinciden, pero la fecha no,
+    así que la clave difería y los dos salían al feed.
+
+    La URL, en cambio, es idéntica en los dos. Así que después de comparar por
+    título se agrupa por dirección, y dentro de cada grupo se descarta el
+    anuncio sin fecha cuando otro sí la trae: es el mismo evento, contado peor.
+    Un curso que de verdad se repite en dos fechas conserva las dos, porque
+    ambas entradas tienen fecha y ninguna es la versión pobre de la otra.
+
     Devuelve (cursos_únicos, cuántos_se_quitaron).
     """
     vistos, unicos = set(), []
@@ -329,7 +340,21 @@ def quitar_cursos_repetidos(cursos):
             continue
         vistos.add(clave)
         unicos.append(curso)
+
+    con_fecha = {
+        _direccion(c) for c in unicos if c.get("fecha_evento") and _direccion(c)
+    }
+    unicos = [
+        c for c in unicos
+        if c.get("fecha_evento") or _direccion(c) not in con_fecha
+    ]
+
     return unicos, len(cursos) - len(unicos)
+
+
+def _direccion(curso):
+    """La URL del curso, normalizada para comparar. Cadena vacía si no trae."""
+    return (curso.get("url") or "").strip().rstrip("/")
 
 
 def marcar_duplicados(items, grupos_dup):
