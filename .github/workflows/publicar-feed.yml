@@ -6,12 +6,17 @@
 # revisiones del final: la que el propio pipeline hace antes de escribir el
 # archivo, y `verificar_privacidad.py` antes de commitearlo.
 #
-# Se enciende por etapas. La línea del comando de abajo empieza en la primera y
-# se avanza cuando cada una queda comprobada:
+# Se encendió por etapas, y ya está en la última:
 #
-#   1. --dias 4 --sin-llm                    entra al buzón y reporta, sin escribir
-#   2. --dias 4 --publicar --marcar --simular   escribe el feed; el buzón, solo en plan
-#   3. --dias 4 --publicar --marcar             completo
+#   1. --dias 4 --sin-llm                       entró al buzón y reportó, sin escribir
+#   2. --dias 4 --publicar --marcar --simular   escribió el feed; el buzón, solo en plan
+#   3. --dias 4 --publicar --marcar             completo  ← acá estamos
+#
+# La etapa 2 estuvo puesta del 2 al 6 de setiembre y publicó dos feeds sin tocar
+# un solo correo, que es lo que `--simular` promete. El costo no fue solo un
+# buzón sucio: la etiqueta `PuzzleFeed/Procesado` es la memoria del pipeline, así
+# que sin ella la ventana de cuatro días volvía a traer los mismos correos y el
+# feed del 04 repitió trece piezas del anterior.
 
 name: Publicar el feed
 
@@ -43,9 +48,13 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    # Una corrida sana tarda unos cinco minutos. Veinte es margen de sobra, y
-    # corta el caso en que una llamada quede colgada esperando para siempre.
-    timeout-minutes: 20
+    # Medido el 07 de setiembre con `--dias 4`: dos corridas de 592 s y 714 s
+    # SOLO en llamadas al modelo, con reintentos por congestión de Gemini. Los
+    # cinco minutos de la medición vieja eran con `--dias 2`. Veinte minutos
+    # dejaban muy poco margen, y agotarlos es el peor final posible: mata el
+    # proceso a media escritura sobre el buzón. Treinta sigue cortando la llamada
+    # que se cuelga esperando para siempre, que es para lo que está el límite.
+    timeout-minutes: 30
 
     steps:
       # Las acciones van fijadas al identificador exacto del commit, no a una
@@ -54,6 +63,11 @@ jobs:
       # que sea exactamente el código que se revisó.
       - name: Traer el repositorio
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          # Historial completo. Por defecto trae un solo commit, y sobre un clon
+          # así de superficial el `git pull --rebase` del último paso no tiene
+          # sobre qué reconstruir. El repositorio es chico: no cuesta nada.
+          fetch-depth: 0
 
       - name: Preparar Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
@@ -71,7 +85,7 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           PUZZLE_SALT: ${{ secrets.PUZZLE_SALT }}
           PUZZLE_IDENTIFICADORES: ${{ secrets.PUZZLE_IDENTIFICADORES }}
-        run: python pipeline/main.py --dias 4 --publicar --marcar --simular
+        run: python pipeline/main.py --dias 4 --publicar --marcar
 
       - name: Revisar privacidad
         env:
@@ -91,4 +105,14 @@ jobs:
           # entera subiría cualquier cosa que un paso haya dejado escrita.
           git add docs/feed.json
           git commit -m "Feed del $(date -u +%Y-%m-%d)"
+          # Para cuando se llega acá, los correos YA están etiquetados en Gmail, y
+          # esa etiqueta es la memoria del pipeline: si el push se queda afuera,
+          # ninguna corrida futura vuelve a mirar esos correos y sus noticias no
+          # se publican nunca. Por eso se reintenta sobre lo que haya llegado al
+          # repositorio mientras tanto, en vez de rendirse al primer rechazo.
+          #
+          # Si aun así falla, la corrida queda en rojo y se puede deshacer a mano:
+          # los correos afectados son los que tengan `PuzzleFeed/Procesado` con
+          # fecha de hoy, y quitarles la etiqueta los devuelve a la próxima ronda.
+          git pull --rebase
           git push
