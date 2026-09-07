@@ -789,6 +789,12 @@ def main():
 
     titulo("COSTO DE LA CORRIDA")
     print(f"  {cliente.resumen()}")
+    _anotar_en_ci(
+        "Llamadas sin resultado",
+        f"{cliente.fallos} llamada(s) al modelo no devolvieron nada. Las piezas "
+        "de esos correos no están en el feed de hoy.",
+        cuando=bool(cliente.fallos),
+    )
 
     if args.json:
         _volcar(args.json, items, cursos, hilos, incidencias)
@@ -825,7 +831,7 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
                 args.publicar, items, cursos, hilos, fecha_feed, sal, identificadores
             )
             print(f"  {cuantos} item(s) en {destino}")
-        except publicar.FugaDePrivacidad as error:
+        except (publicar.FugaDePrivacidad, publicar.FeedVacio) as error:
             print(f"\n  ABORTADO: {error}\n", file=sys.stderr)
             return 1
 
@@ -963,6 +969,16 @@ def marcar_en_gmail(args, usuario, password, correos, items, cursos):
         print(f"\n  {tocados} correo(s) etiquetado(s), marcado(s) leído(s) y archivado(s).")
         for fallo in fallos:
             print(f"  · {fallo}", file=sys.stderr)
+        # Un etiquetado a medias NO tumba la corrida: el feed ya se escribió y
+        # hay que dejarlo publicar. Pero tampoco puede quedar solo en una línea
+        # de un log que nadie abre, porque un correo sin etiquetar vuelve a
+        # entrar en la próxima ventana y su noticia se repite en el feed.
+        _anotar_en_ci(
+            "Etiquetado incompleto",
+            f"{len(fallos)} de {len(plan)} correo(s) no se pudieron etiquetar. "
+            "Sus noticias van a repetirse en la próxima corrida.",
+            cuando=bool(fallos),
+        )
     finally:
         try:
             imap.logout()
@@ -970,6 +986,28 @@ def marcar_en_gmail(args, usuario, password, correos, items, cursos):
             pass
 
     return 0
+
+
+def _anotar_en_ci(titulo_aviso, mensaje, cuando=True):
+    """Deja un aviso en la página de la corrida de Actions, no solo en el log.
+
+    Existe por una asimetría del trabajo desatendido: una corrida que termina
+    en verde no se lee. Los avisos que el pipeline ya imprime sirven cuando hay
+    alguien mirando la terminal; cuando no lo hay, se necesita que el aviso
+    suba hasta donde se ve sin abrir nada, y para eso Actions tiene su propio
+    formato de anotación.
+
+    No cambia el código de salida. Lo que esto marca son corridas que
+    funcionaron a medias, y ahí fallar sería peor: el feed ya está escrito y
+    tiene que llegar a publicarse.
+
+    Fuera de CI no imprime nada: en una terminal esta línea sería ruido, porque
+    el motivo ya se imprimió arriba en prosa.
+    """
+    if cuando and en_ci():
+        # Una anotación de Actions va en una sola línea; los saltos se escapan.
+        limpio = " ".join(str(mensaje).split())
+        print(f"::warning title={titulo_aviso}::{limpio}", flush=True)
 
 
 def _fecha_del_feed(items):

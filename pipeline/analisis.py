@@ -961,7 +961,13 @@ def extraer_cursos(cliente, fuente, asunto, texto, candidatos):
     for curso in datos.get("cursos", []):
         url = (curso.get("url") or "").strip()
         titulo = (curso.get("titulo") or "").strip()
-        if not url.startswith("http") or not titulo:
+        # El esquema completo y no solo "http": esta es la única dirección del
+        # feed que la escribe el modelo en vez de venir de una redirección
+        # resuelta, y termina siendo el `href` de un enlace en una página
+        # pública. `cuerpos.py` filtra igual de estricto al extraer candidatos;
+        # acá se repite porque el modelo puede devolver algo que no estaba en la
+        # lista que se le pasó.
+        if not url.startswith(("http://", "https://")) or not titulo:
             continue
         cursos.append(
             {

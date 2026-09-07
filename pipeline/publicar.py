@@ -96,6 +96,10 @@ class FugaDePrivacidad(Exception):
     """Algo privado llegó al archivo público. Se aborta antes de escribir."""
 
 
+class FeedVacio(Exception):
+    """La corrida no trajo nada y ya había un feed publicado. No se pisa."""
+
+
 def identificador_publico(interno, sal):
     """Deriva el identificador que sale al archivo público.
 
@@ -150,6 +154,7 @@ def escribir(ruta, items, cursos, hilos, generado, sal, identificadores=()):
     feed = armar(items, cursos, hilos, generado, sal, identificadores)
 
     destino = Path(ruta)
+    _no_vaciar(destino, feed)
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(
         json.dumps(feed, ensure_ascii=False, indent=1) + "\n",
@@ -157,6 +162,50 @@ def escribir(ruta, items, cursos, hilos, generado, sal, identificadores=()):
         newline="\n",
     )
     return destino, len(feed["items"])
+
+
+def _no_vaciar(destino, feed):
+    """Se niega a reemplazar un feed con contenido por uno sin nada.
+
+    El escenario es una corrida desatendida un día en que Gemini esté
+    congestionado: todas las llamadas se rinden, `construir_feed` devuelve la
+    lista vacía, y lo que se escribe es un archivo con `"items": []`. Nada de
+    eso es un error para el resto del código —cada llamada perdida se reportó
+    como incidencia, que es lo que manda la regla 4— así que la corrida termina
+    en verde, el paso de git ve un archivo distinto, lo commitea, y el tablero
+    público amanece en blanco.
+
+    La condición es comparativa y no absoluta a propósito. Un feed vacío puede
+    ser honesto: la primera corrida del proyecto, o un buzón sin nada nuevo. Lo
+    que no puede pasar es que uno vacío PISE a uno que tenía piezas.
+
+    No es una revisión de privacidad, así que no va en `_verificar`: eso mira lo
+    que el archivo dice, y esto mira lo que el archivo perdería.
+    """
+    if feed["items"] or feed["cursos"]:
+        return
+    if not destino.exists():
+        # Primera corrida: no hay nada que perder.
+        return
+
+    try:
+        anterior = json.loads(destino.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        # Si no se puede leer lo que había, no hay comparación que hacer, y
+        # negarse por no poder comparar sería peor que seguir.
+        return
+
+    tenia = len(anterior.get("items") or []) + len(anterior.get("cursos") or [])
+    if not tenia:
+        return
+
+    raise FeedVacio(
+        f"La corrida no produjo ninguna pieza, y el feed que hay tiene {tenia}.\n"
+        "No se escribió nada: un archivo vacío borraría el tablero público, y esto\n"
+        "casi siempre significa que el modelo no respondió, no que no hubiera\n"
+        "noticias. Mirá las incidencias de arriba. Los correos quedan sin marcar,\n"
+        "así que la próxima corrida los reintenta."
+    )
 
 
 def _solo(origen, campos):
