@@ -398,8 +398,15 @@ def procesar_correo_de_curso(cliente, correo, mensaje, entrada_curso, incidencia
     # De qué correo salió cada curso. Hace falta para saber a cuál etiquetar
     # después; `publicar.py` no lo incluye en su lista de campos permitidos, así que no sale
     # al archivo público.
+    #
+    # La dirección se limpia acá y no más adelante porque la de un curso no pasa
+    # por `articulos.obtener`: nadie baja el artículo de un curso, así que sale
+    # del correo tal cual, con el rastreo puesto. Limpiarla antes de unificar
+    # también hace que dos anuncios del mismo taller coincidan aunque cada correo
+    # traiga su propia campaña colgando.
     for curso in cursos:
         curso["uid"] = correo["uid"]
+        curso["url"] = articulos.sin_rastreo(curso.get("url") or "")
     return cursos
 
 

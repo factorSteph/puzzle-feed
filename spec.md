@@ -164,6 +164,17 @@ lo intuitivo (sería más corto enumerar lo que se excluye) y es a propósito: e
 exclusiones, un campo nuevo del pipeline se publicaría solo por olvidar agregarlo. Ya
 evitó una fuga real (D23).
 
+**El link se publica sin la cadena de rastreo.** Seguir las redirecciones resuelve el
+sitio, pero los parámetros de medición sobreviven pegados al final, y no todos son
+inocuos: un `utm_source` cuenta de qué newsletter salió el clic, y varias plataformas de
+correo masivo cuelgan del enlace el identificador del **destinatario**, no el de la
+campaña. Por eso se le quitan a la dirección los parámetros de rastreo conocidos antes de
+que entre al archivo. La lista es explícita y corta: lo que no está en ella se conserva,
+porque en muchas direcciones el parámetro **es** la dirección, y sigue pasando por la
+revisión que aborta la corrida cuando algo largo cuelga de un signo de pregunta. Esa
+revisión también dejó de abortar corridas sanas: trataba el nombre de una campaña de
+marketing como si fuera el identificador de alguien.
+
 ### 7.1 La regla de los remitentes
 
 **En un archivo público solo pueden aparecer suscripciones públicas**: newsletters a
