@@ -234,7 +234,10 @@ def revisar_correos(reporte):
 
 def revisar_rutas(reporte):
     print("\n5. No hay rutas de la máquina de quien desarrolla")
+    # El fragmento que coincidió solo se imprime fuera de CI: el log de Actions
+    # es público y este chequeo busca justo lo que no debe llegar ahí.
     encontradas = []
+    fragmentos = []
     for ruta in archivos_rastreados():
         archivo = RAIZ / ruta
         if not archivo.is_file():
@@ -244,11 +247,18 @@ def revisar_rutas(reporte):
         except OSError:
             continue
         for numero, linea in enumerate(texto.splitlines(), 1):
-            if RUTA_PERSONAL.search(linea):
+            coincidencia = RUTA_PERSONAL.search(linea)
+            if coincidencia:
                 encontradas.append(f"{ruta}:{numero}")
+                inicio = max(0, coincidencia.start() - 40)
+                fin = coincidencia.end() + 40
+                fragmentos.append(f"{ruta}:{numero} → …{linea[inicio:fin]}…")
 
     if encontradas:
-        reporte.mal(f"{len(encontradas)} línea(s) con rutas locales", ", ".join(encontradas))
+        if config.en_ci():
+            reporte.mal(f"{len(encontradas)} línea(s) con rutas locales", ", ".join(encontradas))
+        else:
+            reporte.mal(f"{len(encontradas)} línea(s) con rutas locales", "; ".join(fragmentos))
     else:
         reporte.bien("ninguna")
 
