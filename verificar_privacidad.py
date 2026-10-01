@@ -23,11 +23,12 @@ está escrito.
   1. Que los archivos con datos personales sigan retenidos por .gitignore.
   2. Que ninguno de ellos haya entrado nunca al historial, ni en un commit viejo.
   3. Que ningún archivo rastreado nombre una extensión local concreta.
-  4. Que las direcciones de correo en archivos rastreados sean todas de la
+  4. Que las direcciones de correo en el código sean todas de la
      configuración pública de fuentes.
-  5. Que no haya rutas de la máquina de quien desarrolla.
+  5. Que no haya rutas de la máquina de quien desarrolla en el código.
   6. Que `feed.json` lleve solo campos permitidos, identificadores derivados,
-     enlaces sin credenciales de suscriptor, y nada de la lista de propios.
+     enlaces sin credenciales de suscriptor, y nada de la lista de propios,
+     con las mismas reglas que `pipeline/publicar.py` aplica al escribirlo.
 
 Cada comprobación imprime lo que encontró, no solo si pasó. Un verificador que
 solo dice OK enseña a confiar en él sin leerlo, y ese es el hábito que hizo
@@ -116,8 +117,23 @@ def git(*argumentos):
     return salida.stdout
 
 
+RUTA_FEED = "docs/feed.json"
+
+
 def archivos_rastreados():
     return [linea for linea in git("ls-files").splitlines() if linea.strip()]
+
+
+def archivos_de_codigo():
+    """Los rastreados, menos el feed.
+
+    Las revisiones 4 y 5 son de higiene del código: una dirección o una ruta
+    escrita a mano en un archivo del proyecto. El feed es otra cosa, texto de
+    noticias, y ahí una ruta `/home/…` o el contacto de una organización son
+    contenido legítimo: las dos cosas frenaron corridas reales. El feed tiene
+    su propia revisión, la 6, con las reglas de `pipeline/publicar.py`.
+    """
+    return [ruta for ruta in archivos_rastreados() if ruta != RUTA_FEED]
 
 
 def identificadores_propios():
@@ -206,7 +222,7 @@ def revisar_correos(reporte):
             permitidas |= set(CORREO.findall(archivo.read_text(encoding="utf-8")))
 
     ajenas = {}
-    for ruta in archivos_rastreados():
+    for ruta in archivos_de_codigo():
         archivo = RAIZ / ruta
         if not archivo.is_file():
             continue
@@ -238,7 +254,7 @@ def revisar_rutas(reporte):
     # es público y este chequeo busca justo lo que no debe llegar ahí.
     encontradas = []
     fragmentos = []
-    for ruta in archivos_rastreados():
+    for ruta in archivos_de_codigo():
         archivo = RAIZ / ruta
         if not archivo.is_file():
             continue
@@ -292,27 +308,29 @@ def revisar_feed(reporte):
     else:
         reporte.bien(f"{len(ids)} identificador(es) derivados y únicos")
 
-    texto_entero = json.dumps(feed, ensure_ascii=False)
+    # Enlaces e identificadores propios se revisan con las mismas funciones que
+    # usa `publicar.py` al escribir el archivo. Hasta el 30 de setiembre esta
+    # revisión tenía su propia versión, escrita distinto, y las dos no siempre
+    # coincidían.
+    textos = list(publicar._textos(feed))
 
-    enlaces = re.findall(r'"(https?://[^"]+)"', texto_entero)
-    colgando = []
-    for enlace in enlaces:
-        cuerpo = enlace.split("?", 1)
-        if len(cuerpo) == 2:
-            for parametro in cuerpo[1].split("&"):
-                _, _, valor = parametro.partition("=")
-                if len(valor) >= publicar.LARGO_DE_TOKEN:
-                    colgando.append(enlace)
-    if colgando:
-        reporte.mal(f"{len(colgando)} enlace(s) con un identificador colgando", colgando[0])
+    enlaces = [t for t in textos if t.startswith(("http://", "https://"))]
+    problemas = [p[1] for p in map(publicar.problema_del_enlace, enlaces) if p]
+    retenidos = sum(1 for i in items + (feed.get("cursos") or []) if i.get("enlace_retenido"))
+    if problemas:
+        reporte.mal(f"{len(problemas)} enlace(s) que no pueden publicarse", problemas[0])
     else:
-        reporte.bien(f"{len(enlaces)} enlace(s), ninguno con identificador de suscriptor")
+        reporte.bien(
+            f"{len(enlaces)} enlace(s), ninguno con identificador de suscriptor",
+            f"{retenidos} pieza(s) publicadas sin enlace, con el motivo a la vista"
+            if retenidos else "",
+        )
 
     propios = identificadores_propios()
     if not propios:
         reporte.mal("no pude leer los identificadores propios de .env", "la revisión 6 quedó coja")
         return
-    apariciones = [p for p in propios if p.lower() in texto_entero.lower()]
+    apariciones = [p for p in propios if any(p.lower() in t.lower() for t in textos)]
     if apariciones:
         reporte.mal(f"{len(apariciones)} identificador(es) propios aparecen en el feed")
     else:

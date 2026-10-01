@@ -64,9 +64,10 @@ CAMPOS_PUBLICOS = (
     "confianza",
     "fecha_original",
     "duplicado_de",
+    "enlace_retenido",
 )
 
-CAMPOS_CURSO = ("id", "titulo", "fuente", "url", "fecha_evento", "gratis")
+CAMPOS_CURSO = ("id", "titulo", "fuente", "url", "fecha_evento", "gratis", "enlace_retenido")
 CAMPOS_HILO = ("titulo", "tipo", "que_dice_el_conjunto", "ids")
 
 # Prefijos de nombre de campo que no pueden existir en el archivo público. Se
@@ -140,18 +141,19 @@ def armar(items, cursos, hilos, generado, sal, identificadores=()):
     for curso in feed["cursos"]:
         curso["id"] = publico(curso["id"])
 
+    retenidos = _retener_enlaces(feed)
     _verificar(feed, identificadores)
-    return feed
+    return feed, retenidos
 
 
 def escribir(ruta, items, cursos, hilos, generado, sal, identificadores=()):
-    """Escribe `feed.json`. Devuelve (ruta, cuántos_items).
+    """Escribe `feed.json`. Devuelve (ruta, cuántos_items, enlaces_retenidos).
 
     Si la verificación de privacidad falla, no se escribe nada y se levanta
     `FugaDePrivacidad`: es preferible una corrida rota a un archivo publicado
     con algo que no debía salir.
     """
-    feed = armar(items, cursos, hilos, generado, sal, identificadores)
+    feed, retenidos = armar(items, cursos, hilos, generado, sal, identificadores)
 
     destino = Path(ruta)
     _no_vaciar(destino, feed)
@@ -161,7 +163,51 @@ def escribir(ruta, items, cursos, hilos, generado, sal, identificadores=()):
         encoding="utf-8",
         newline="\n",
     )
-    return destino, len(feed["items"])
+    return destino, len(feed["items"]), retenidos
+
+
+def problema_del_enlace(enlace):
+    """Por qué un enlace no puede publicarse: (motivo, detalle), o None.
+
+    Es la única definición de "enlace que no se publica" del proyecto: la usan
+    la retención de abajo, `_verificar` y `verificar_privacidad.py`. Mientras
+    hubo dos versiones escritas distinto, una podía aprobar lo que la otra
+    rechazaba.
+
+    El detalle nombra el sitio y el parámetro, nunca el valor: va a un log que
+    en la corrida automática es público.
+    """
+    partes = urlsplit(enlace)
+    if partes.username or partes.password:
+        return "credenciales", f"{partes.hostname} (lleva usuario o contraseña)"
+    for parametro, valor in parse_qsl(partes.query):
+        if len(valor) >= LARGO_DE_TOKEN:
+            return "identificador", f"{partes.hostname} (parámetro `{parametro}`)"
+    return None
+
+
+def _retener_enlaces(feed):
+    """Saca el enlace de las piezas cuyo enlace no puede publicarse.
+
+    La pieza se publica igual, sin enlace y con `enlace_retenido` diciendo por
+    qué, que el tablero muestra. Antes un enlace así abortaba la corrida
+    entera, y como la regla es deliberadamente desconfiada (un valor largo en
+    la query puede ser el nombre del artículo y no un identificador), un solo
+    falso positivo dejaba sin feed el día completo.
+
+    Devuelve las líneas para el reporte. Nada se retiene en silencio.
+    """
+    retenidos = []
+    for seccion, campo in (("items", "url_original"), ("cursos", "url")):
+        for pieza in feed[seccion]:
+            enlace = pieza.get(campo)
+            problema = problema_del_enlace(enlace) if enlace else None
+            if problema:
+                motivo, detalle = problema
+                pieza[campo] = None
+                pieza["enlace_retenido"] = motivo
+                retenidos.append(f"{(pieza.get('titulo') or '')[:50]} · {detalle}")
+    return retenidos
 
 
 def _no_vaciar(destino, feed):
@@ -288,21 +334,15 @@ def _verificar(feed, identificadores=()):
                     "archivo local para ver cuál es la pieza."
                 )
 
+    # Los enlaces de las piezas ya pasaron por `_retener_enlaces`. Si acá
+    # aparece uno, vino por un campo que esa retención no conoce, y lo correcto
+    # es frenar hasta que alguien decida qué hacer con él.
     for texto in textos:
         if not texto.startswith(("http://", "https://")):
             continue
-        partes = urlsplit(texto)
-        if partes.username or partes.password:
+        problema = problema_del_enlace(texto)
+        if problema:
             raise FugaDePrivacidad(
-                f"Un enlace a publicar lleva credenciales: {partes.hostname}\n"
+                f"Un enlace fuera de los campos de enlace no puede publicarse: {problema[1]}\n"
                 "No se escribió nada."
             )
-        for parametro, valor in parse_qsl(partes.query):
-            if len(valor) >= LARGO_DE_TOKEN:
-                raise FugaDePrivacidad(
-                    f"Un enlace a publicar lleva un identificador colgando: "
-                    f"{partes.hostname} (parámetro `{parametro}`)\n"
-                    "No se escribió nada: lo más probable es que una "
-                    "redirección no haya resuelto y ese enlace sea el del "
-                    "correo, no el del artículo."
-                )

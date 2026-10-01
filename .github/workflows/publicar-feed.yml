@@ -12,6 +12,9 @@
 #   2. --dias 4 --publicar --marcar --simular   escribió el feed; el buzón, solo en plan
 #   3. --dias 4 --publicar --marcar             completo  ← acá estamos
 #
+# Desde el 30 de setiembre la etapa 3 marca en dos tiempos: el pipeline guarda
+# el plan de marcado y el último paso lo aplica, una vez publicado el feed.
+#
 # La etapa 2 estuvo puesta del 2 al 6 de setiembre y publicó dos feeds sin tocar
 # un solo correo, que es lo que `--simular` promete. El costo no fue solo un
 # buzón sucio: la etiqueta `PuzzleFeed/Procesado` es la memoria del pipeline, así
@@ -56,6 +59,12 @@ jobs:
     # que se cuelga esperando para siempre, que es para lo que está el límite.
     timeout-minutes: 30
 
+    env:
+      # Sin esto Python junta la salida normal en bloques y los errores salen
+      # al instante, así que en el log un "ABORTADO" aparece en medio del
+      # reporte, varias secciones antes del punto donde ocurrió.
+      PYTHONUNBUFFERED: '1'
+
     steps:
       # Las acciones van fijadas al identificador exacto del commit, no a una
       # etiqueta de versión. Una etiqueta es un puntero y se puede mover: lo que
@@ -85,7 +94,12 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           PUZZLE_SALT: ${{ secrets.PUZZLE_SALT }}
           PUZZLE_IDENTIFICADORES: ${{ secrets.PUZZLE_IDENTIFICADORES }}
-        run: python pipeline/main.py --dias 4 --publicar --marcar
+        # El plan de marcado se guarda y se aplica recién al final, después del
+        # push: ver el último paso. Va a la carpeta temporal de la máquina, que
+        # está fuera del repositorio y desaparece con ella.
+        run: >-
+          python pipeline/main.py --dias 4 --publicar --marcar
+          --guardar-plan "$RUNNER_TEMP/plan-marcado.json"
 
       - name: Revisar privacidad
         env:
@@ -105,14 +119,20 @@ jobs:
           # entera subiría cualquier cosa que un paso haya dejado escrita.
           git add docs/feed.json
           git commit -m "Feed del $(date -u +%Y-%m-%d)"
-          # Para cuando se llega acá, los correos YA están etiquetados en Gmail, y
-          # esa etiqueta es la memoria del pipeline: si el push se queda afuera,
-          # ninguna corrida futura vuelve a mirar esos correos y sus noticias no
-          # se publican nunca. Por eso se reintenta sobre lo que haya llegado al
-          # repositorio mientras tanto, en vez de rendirse al primer rechazo.
-          #
-          # Si aun así falla, la corrida queda en rojo y se puede deshacer a mano:
-          # los correos afectados son los que tengan `PuzzleFeed/Procesado` con
-          # fecha de hoy, y quitarles la etiqueta los devuelve a la próxima ronda.
+          # Si el repositorio recibió algo mientras tanto, se reconstruye encima
+          # en vez de rendirse al primer rechazo.
           git pull --rebase
           git push
+
+      # Último, y solo si todo lo anterior salió bien. La etiqueta
+      # `PuzzleFeed/Procesado` es la memoria del pipeline: un correo que la
+      # lleva no lo vuelve a mirar ninguna corrida. Hasta el 24 de setiembre se
+      # ponía dentro del paso del pipeline, antes de la revisión de privacidad y
+      # del push, y dos corridas frenadas ahí dejaron correos archivados con
+      # noticias que no se publicaron nunca. Ahora, si algo falla antes, el
+      # buzón queda intacto y la corrida siguiente los reintenta.
+      - name: Ordenar el buzón
+        env:
+          GMAIL_USUARIO: ${{ secrets.GMAIL_USUARIO }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python pipeline/main.py --aplicar-plan "$RUNNER_TEMP/plan-marcado.json"

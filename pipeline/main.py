@@ -14,6 +14,8 @@ Uso:
     python pipeline/main.py --por-correo 12      # más noticias por correo
     python pipeline/main.py --sin-llm            # solo ingesta, sin gastar modelo
     python pipeline/main.py --publicar --marcar  # escribir el feed y ordenar Gmail
+    python pipeline/main.py --publicar --marcar --guardar-plan plan.privado.json
+    python pipeline/main.py --aplicar-plan plan.privado.json   # ordenar Gmail después
     python pipeline/main.py --desde-feed         # extensiones sobre el feed ya publicado
 
 ## Sobre los correos que fallan
@@ -708,17 +710,33 @@ def main():
         help="etiquetar en Gmail, marcar leídos y archivar los correos procesados",
     )
     salidas.add_argument(
+        "--guardar-plan", metavar="RUTA",
+        help="con --marcar: escribir el plan de marcado en vez de ejecutarlo",
+    )
+    salidas.add_argument(
+        "--aplicar-plan", metavar="RUTA",
+        help="ejecutar un plan de marcado guardado, sin volver a procesar nada",
+    )
+    salidas.add_argument(
         "--simular", action="store_true",
-        help="con --marcar o --local: mostrar qué haría, sin hacerlo",
+        help="con --marcar, --aplicar-plan o --local: mostrar qué haría, sin hacerlo",
     )
     args = parser.parse_args()
 
-    if args.simular and not (args.marcar or args.local or args.desde_feed):
+    if args.simular and not (args.marcar or args.local or args.desde_feed or args.aplicar_plan):
         print(
-            "--simular no hace nada por su cuenta: acompañalo de --marcar o --local.",
+            "--simular no hace nada por su cuenta: acompañalo de --marcar, "
+            "--aplicar-plan o --local.",
             file=sys.stderr,
         )
         return 1
+
+    if args.guardar_plan and not args.marcar:
+        print("--guardar-plan es una forma de --marcar: acompañalo de --marcar.", file=sys.stderr)
+        return 1
+
+    if args.aplicar_plan:
+        return aplicar_plan_guardado(args)
 
     if args.desde_feed:
         return correr_sobre_feed(args)
@@ -827,10 +845,18 @@ def publicar_salidas(args, usuario, password, correos, items, cursos, hilos, cli
         print(f"  verificación de texto: {len(identificadores)} identificador(es) activo(s)")
 
         try:
-            destino, cuantos = publicar.escribir(
+            destino, cuantos, retenidos = publicar.escribir(
                 args.publicar, items, cursos, hilos, fecha_feed, sal, identificadores
             )
             print(f"  {cuantos} item(s) en {destino}")
+            for retenido in retenidos:
+                print(f"  · enlace retenido: {retenido}")
+            _anotar_en_ci(
+                "Enlaces retenidos",
+                f"{len(retenidos)} pieza(s) se publicaron sin enlace porque el enlace "
+                "parecía llevar un identificador. El motivo se ve en el tablero.",
+                cuando=bool(retenidos),
+            )
         except (publicar.FugaDePrivacidad, publicar.FeedVacio) as error:
             print(f"\n  ABORTADO: {error}\n", file=sys.stderr)
             return 1
@@ -936,9 +962,12 @@ def correr_extensiones(args, usuario, password, items, hilos, fecha_feed, client
 def marcar_en_gmail(args, usuario, password, correos, items, cursos):
     """Etiqueta, marca leídos y archiva los correos que sí se procesaron.
 
-    Se reconecta en vez de reusar la sesión de la ingesta: entre una cosa y
-    otra pasaron varios minutos de llamadas al modelo, y una conexión IMAP
-    ociosa tanto rato se cae sola.
+    Con `--guardar-plan` no toca el buzón: deja el plan escrito para que lo
+    ejecute `--aplicar-plan` más tarde. Eso es lo que usa la corrida
+    automática, porque la etiqueta es la memoria del pipeline y no puede
+    ponerse antes de saber que el feed se publicó: si la revisión de privacidad
+    o el push fallan después, esos correos quedarían archivados con noticias
+    que nadie publicó, y ninguna corrida futura volvería a mirarlos.
     """
     procesados = {str(i["id"]).split("-")[0] for i in items}
     cursos_por_uid = {c["uid"] for c in cursos if c.get("uid")}
@@ -947,6 +976,73 @@ def marcar_en_gmail(args, usuario, password, correos, items, cursos):
     plan = etiquetas.planificar(items, cursos_por_uid, procesados)
     por_uid = {c["uid"]: c for c in correos}
 
+    if args.guardar_plan:
+        asuntos = {uid: por_uid.get(uid, {}).get("asunto") for uid in plan}
+        guardar_plan(args.guardar_plan, plan, asuntos, len(correos))
+        return 0
+
+    return _mostrar_y_ejecutar(args, usuario, password, plan, por_uid, len(correos))
+
+
+def guardar_plan(ruta, plan, asuntos, revisados):
+    """Escribe el plan de marcado para aplicarlo después del push.
+
+    Lleva uids del buzón y asuntos de newsletters: no es para publicar. En la
+    corrida automática va a la carpeta temporal de la máquina, fuera del
+    repositorio, y en local el nombre `*.privado.json` lo retiene .gitignore.
+    """
+    titulo("GMAIL  (plan guardado: todavía no se toca nada)")
+    for linea in etiquetas.describir(plan, {u: {"asunto": a} for u, a in asuntos.items()}):
+        print(linea)
+    destino = pathlib.Path(ruta)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(
+        json.dumps(
+            {"plan": plan, "asuntos": asuntos, "revisados": revisados},
+            ensure_ascii=False, indent=1,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    print(f"\n  {len(plan)} correo(s) en el plan, guardado en {destino}.")
+    print("  Se aplica con --aplicar-plan, una vez publicado el feed.")
+
+
+def aplicar_plan_guardado(args):
+    """Ejecuta un plan que dejó `--guardar-plan`.
+
+    Que el archivo no exista no es un error: las corridas que no encuentran
+    nada que procesar terminan antes de llegar a escribirlo. Se dice y se sigue.
+    """
+    ruta = pathlib.Path(args.aplicar_plan)
+    if not ruta.exists():
+        print(f"No hay plan de marcado en {ruta}: la corrida no dejó correos para marcar.")
+        return 0
+    try:
+        guardado = json.loads(ruta.read_text(encoding="utf-8"))
+        plan = guardado["plan"]
+    except (json.JSONDecodeError, OSError, KeyError) as error:
+        print(f"\nNo pude leer el plan {ruta}: {type(error).__name__}: {error}\n", file=sys.stderr)
+        return 1
+
+    try:
+        usuario, password = cargar_credenciales()
+    except ErrorDeConfiguracion as error:
+        print(f"\nConfiguración incompleta:\n{error}\n", file=sys.stderr)
+        return 1
+
+    por_uid = {uid: {"asunto": asunto} for uid, asunto in (guardado.get("asuntos") or {}).items()}
+    return _mostrar_y_ejecutar(
+        args, usuario, password, plan, por_uid, guardado.get("revisados", len(plan))
+    )
+
+
+def _mostrar_y_ejecutar(args, usuario, password, plan, por_uid, revisados):
+    """Imprime el plan y, salvo con `--simular`, lo ejecuta.
+
+    Se reconecta en vez de reusar la sesión de la ingesta: entre una cosa y
+    otra pasaron varios minutos de llamadas al modelo, y una conexión IMAP
+    ociosa tanto rato se cae sola.
+    """
     titulo("GMAIL" + ("  (simulación: no se toca nada)" if args.simular else ""))
     for linea in etiquetas.describir(plan, por_uid):
         print(linea)
@@ -954,7 +1050,7 @@ def marcar_en_gmail(args, usuario, password, correos, items, cursos):
     if not plan:
         return 0
 
-    intactos = len(correos) - len(plan)
+    intactos = revisados - len(plan)
     print(f"\n  {len(plan)} correo(s) a marcar · {intactos} quedan intactos")
     print("  Lo descartado, lo desconocido y lo que falló no se toca (D12, D17).")
 

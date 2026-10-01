@@ -308,6 +308,7 @@ body.ver-todo .p.leida { display: flex; }
 .rap h4 a:hover { text-decoration: underline; }
 .rap .pq { font-size: .85rem; color: var(--texto-2); margin: 0; }
 .rap .mot { font-size: .74rem; color: var(--texto-3); margin-top: auto; padding-top: .4rem; }
+.retenido { font-size: .74rem; color: var(--ambar); margin: .2rem 0 .3rem; }
 
 /* ── Cursos y vacíos ───────────────────────────────────────────────── */
 
@@ -438,6 +439,17 @@ body.ver-todo .p.leida { display: flex; }
       rate_limit_persistente: "el sitio pidió bajar el ritmo",
       timeout: "el sitio no respondió a tiempo"
     };
+
+    /* Una pieza cuyo enlace no podía publicarse sale igual, sin enlace, y
+       dice por qué: ningún filtro descarta en silencio. */
+    var RETENIDO = {
+      identificador: "enlace retenido: parecía llevar un identificador de suscriptor",
+      credenciales: "enlace retenido: llevaba usuario o contraseña"
+    };
+    function avisoRetenido(pieza) {
+      if (!pieza.enlace_retenido) return null;
+      return el("div", "retenido", RETENIDO[pieza.enlace_retenido] || "enlace retenido");
+    }
 
     var MES = ["enero","febrero","marzo","abril","mayo","junio","julio",
                "agosto","setiembre","octubre","noviembre","diciembre"];
@@ -691,6 +703,7 @@ body.ver-todo .p.leida { display: flex; }
         h.appendChild(a);
       } else { h.textContent = item.titulo; }
       art.appendChild(h);
+      if (item.enlace_retenido) art.appendChild(avisoRetenido(item));
 
       var esAutor = item.procedencia_resumen === "correo_de_autor";
       var org = el("span", "origen " + (esAutor ? "autor" : "completo"));
@@ -925,6 +938,7 @@ body.ver-todo .p.leida { display: flex; }
           h4.appendChild(a);
         } else { h4.textContent = i.titulo; }
         t.appendChild(h4);
+        if (i.enlace_retenido) t.appendChild(avisoRetenido(i));
         if (i.por_que_importa) t.appendChild(el("p", "pq", i.por_que_importa));
         t.appendChild(el("div", "mot", MOTIVO[i.motivo_fallback] || i.motivo_fallback || ""));
         cr.carril.appendChild(t);
@@ -969,6 +983,7 @@ body.ver-todo .p.leida { display: flex; }
         a.href = c.url; a.target = "_blank"; a.rel = "noopener noreferrer";
         t.appendChild(a);
       } else { t.textContent = c.titulo; }
+      if (c.enlace_retenido) t.appendChild(avisoRetenido(c));
       fila.appendChild(t);
       fila.appendChild(el("span", "fe", c.fecha_evento ? fecha(c.fecha_evento) : "sin fecha"));
       fila.appendChild(el("span", "pr",

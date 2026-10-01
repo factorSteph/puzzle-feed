@@ -171,9 +171,19 @@ correo masivo cuelgan del enlace el identificador del **destinatario**, no el de
 campaña. Por eso se le quitan a la dirección los parámetros de rastreo conocidos antes de
 que entre al archivo. La lista es explícita y corta: lo que no está en ella se conserva,
 porque en muchas direcciones el parámetro **es** la dirección, y sigue pasando por la
-revisión que aborta la corrida cuando algo largo cuelga de un signo de pregunta. Esa
-revisión también dejó de abortar corridas sanas: trataba el nombre de una campaña de
-marketing como si fuera el identificador de alguien.
+revisión de lo que cuelga de un signo de pregunta. Esa revisión también dejó de
+abortar corridas sanas: trataba el nombre de una campaña de marketing como si fuera el
+identificador de alguien.
+
+**Un enlace sospechoso se retiene, no aborta.** La revisión es desconfiada a propósito
+—un valor largo en la dirección puede ser el nombre del artículo, como
+`?id=qwen3.8-livetranslate`— y mientras abortaba la corrida, un solo falso positivo
+dejaba sin feed el día entero. Desde el 2026-09-30 esa pieza se publica sin enlace, con
+`enlace_retenido` diciendo por qué, y el tablero lo muestra. Lo que sí sigue abortando
+es un identificador propio en el texto: eso no es una sospecha, es una coincidencia
+literal. Hay una sola definición de "enlace que no se publica",
+`publicar.problema_del_enlace`, y `verificar_privacidad.py` la importa en vez de
+repetirla.
 
 ### 7.1 La regla de los remitentes
 
@@ -238,6 +248,7 @@ Consecuencias aceptadas:
     "fecha_original": "date",
     "fecha_procesado": "date",
     "duplicado_de": ["ids"],
+    "enlace_retenido": "identificador | credenciales | null",
     "confianza": "alta | baja"
   }],
   "hilos": [{

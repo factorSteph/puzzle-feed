@@ -118,7 +118,7 @@ Ver [`spec.md`](spec.md) §7 para el detalle completo.
 | 3b. Análisis | Elegir, resumir, clasificar por tema, deduplicar, hilar | ✅ |
 | 4. Salidas | `feed.json`, etiquetado y archivado en Gmail | ✅ |
 | 5. Tablero | HTML/JS estático leyendo `feed.json` | ✅ |
-| 6. Automatización | GitHub Actions cada 2 días | ⬜ |
+| 6. Automatización | GitHub Actions cada 2 días | ✅ |
 
 Medido el 2026-09-01 sobre el buzón real, con la ventana de 2 días que es la frecuencia
 del feed: **25 piezas → 15 principales + 10 breves, 17 llamadas al modelo, 264 s, cero
@@ -198,7 +198,9 @@ Procesa y reporta en la terminal. **No escribe nada**: ni archivos, ni correo, n
 | `--sin-llm` | solo ingesta, sin gastar modelo |
 | `--publicar` | escribir `docs/feed.json` |
 | `--marcar` | etiquetar, marcar leído y archivar en Gmail |
-| `--simular` | con `--marcar`: mostrar qué haría, sin hacerlo |
+| `--guardar-plan RUTA` | con `--marcar`: guardar el plan en vez de ejecutarlo |
+| `--aplicar-plan RUTA` | ejecutar un plan guardado, sin volver a procesar nada |
+| `--simular` | con `--marcar` o `--aplicar-plan`: mostrar qué haría, sin hacerlo |
 
 La primera vez que uses `--marcar`, usalo con `--simular`.
 
@@ -494,7 +496,7 @@ isn't yours.
 | 3b. Analysis | Pick, summarize, classify by topic, deduplicate, thread | ✅ |
 | 4. Outputs | `feed.json`, labeling and archiving in Gmail | ✅ |
 | 5. Board | Static HTML/JS reading `feed.json` | ✅ |
-| 6. Automation | GitHub Actions every 2 days | ⬜ |
+| 6. Automation | GitHub Actions every 2 days | ✅ |
 
 Measured on 2026-09-01 against the real inbox, over the 2-day window that matches the
 feed's cadence: **25 pieces → 15 main + 10 briefs, 17 model calls, 264 s, zero
@@ -533,6 +535,8 @@ in.
 | `--sin-llm` | ingest only, no model calls |
 | `--publicar` | write `docs/feed.json` |
 | `--marcar` | label, mark read and archive in Gmail |
-| `--simular` | with `--marcar`: show what it would do, without doing it |
+| `--guardar-plan RUTA` | with `--marcar`: save the plan instead of running it |
+| `--aplicar-plan RUTA` | run a saved plan, without processing anything again |
+| `--simular` | with `--marcar` or `--aplicar-plan`: show what it would do, without doing it |
 
 The first time you use `--marcar`, use it with `--simular`.
